@@ -83,19 +83,19 @@ class NimKernel(Kernel):
     def __init__(self, *args, **kwargs):
         super(NimKernel, self).__init__(*args, **kwargs)
         self.files = []
-        mastertemp = tempfile.mkstemp(suffix='.out')
-        os.close(mastertemp[0])
-        self.master_path = mastertemp[1] # absolute pathname to tmpfile
-        msp = "-o:"+self.master_path
-        filepath = path.join(path.dirname(path.realpath(__file__)), '..', 'resources', 'master.nim')
-        subprocess.call(['nim', 'c', '--verbosity:0', '--app:lib', msp, filepath])
-       # subprocess.call(['gcc', filepath, '-std=c11', '-rdynamic', '-ldl', '-o', self.master_path])
+      # mastertemp = tempfile.mkstemp(suffix='.out')
+      # os.close(mastertemp[0])
+      # self.master_path = mastertemp[1] # absolute pathname to tmpfile
+      # msp = "-o:"+self.master_path
+      # filepath = path.join(path.dirname(path.realpath(__file__)), '..', 'resources', 'master.nim')
+      # subprocess.call(['nim', 'c', '--verbosity:0', '--app:lib', msp, filepath])
+      # subprocess.call(['gcc', filepath, '-std=c11', '-rdynamic', '-ldl', '-o', self.master_path])
 
     def cleanup_files(self):
         """Remove all the temporary files created by the kernel"""
         for file in self.files:
             os.remove(file)
-        os.remove(self.master_path)
+        #os.remove(self.master_path)
 
     def new_temp_file(self, **kwargs):
         """Create a new temp file to be deleted when the kernel shuts down"""
@@ -139,8 +139,8 @@ class NimKernel(Kernel):
                                     p.returncode))
                     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],
                             'user_expressions': {}}
-#self.master_path,
-        p = self.create_jupyter_subprocess([binary_file.name])
+
+        p = self.create_jupyter_subprocess([binary_file.name]) #self.master_path,
         while p.poll() is None:
             p.write_contents()
         p.write_contents()

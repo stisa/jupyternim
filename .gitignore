@@ -8,3 +8,4 @@ MANIFEST
 *.egg-info/
 nimcache/
 tt.txt
+cocoa.nim
