@@ -3,13 +3,13 @@
 This is a rough adaptation of https://github.com/brendan-rius/jupyter-c-kernel .
 It's mostly functional, there are probably bugs lurking around.
 
-Look at `example-notebook` for some examples.
+Look at [example-notebook](https://github.com/stisa/jupyter-nim-kernel/blob/master/example-notebook.ipynb) for some examples.
 
 **NOTE**: Variables are **NOT** shared between blocks !! I'll try working on it when I have time
 
 ## Prereqs
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
-- a working `jupyter` (and  **python 3^**) installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html)   
+- a working `jupyter` (and  **python 3^**) installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html)
 and adding jupyter with `conda install jupyter` )
 
 ## Install
