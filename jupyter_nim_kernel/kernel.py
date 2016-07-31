@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import os
 import os.path as path
+import sys
 
 
 class RealTimeSubprocess(subprocess.Popen):
@@ -19,9 +20,12 @@ class RealTimeSubprocess(subprocess.Popen):
         :param write_to_stdout: a callable that will be called with chunks of data from stdout
         :param write_to_stderr: a callable that will be called with chunks of data from stderr
         """
+        #fsa = open('C:\\Users\\silvio\\Documents\\Dev\\nim\\jupyter-nim-kernel\\tt.txt','a')
+        #fsa.write(str(cmd))
+        
         self._write_to_stdout = write_to_stdout
         self._write_to_stderr = write_to_stderr
-
+              
         super().__init__(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
 
         self._stdout_queue = Queue()
@@ -81,9 +85,10 @@ class NimKernel(Kernel):
         self.files = []
         mastertemp = tempfile.mkstemp(suffix='.out')
         os.close(mastertemp[0])
-        self.master_path = mastertemp[1]
+        self.master_path = mastertemp[1] # absolute pathname to tmpfile
+        msp = "-o:"+self.master_path
         filepath = path.join(path.dirname(path.realpath(__file__)), '..', 'resources', 'master.nim')
-         subprocess.call(['nim', 'c', '--app:lib', '-o', self.master_path, filepath])
+        subprocess.call(['nim', 'c', '--verbosity:0', '--app:lib', msp, filepath])
        # subprocess.call(['gcc', filepath, '-std=c11', '-rdynamic', '-ldl', '-o', self.master_path])
 
     def cleanup_files(self):
@@ -98,7 +103,7 @@ class NimKernel(Kernel):
         kwargs['delete'] = False
         kwargs['mode'] = 'w'
         file = tempfile.NamedTemporaryFile(**kwargs)
-        self.files.append(file.name)
+        self.files.append(file.name)        
         return file
 
     def _write_to_stdout(self, contents):
@@ -113,12 +118,14 @@ class NimKernel(Kernel):
                                   lambda contents: self._write_to_stderr(contents.decode()))
 
     def compile_with_nimc(self, source_filename, binary_filename):
-        args = ['nim', 'c', '-t:fPIC','-t:shared', '-t:rdynamic', '-o', binary_filename, source_filename]
+        #args = ['gcc', source_filename, '-std=c11', '-fPIC', '-shared', '-rdynamic', '-o', binary_filename]
+        obf = '-o:'+binary_filename
+        args = ['nim', 'c', '--verbosity:0','-t:-fPIC','-t:-shared', obf, source_filename]
         return self.create_jupyter_subprocess(args)
 
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
-        with self.new_temp_file(suffix='.c') as source_file:
+        with self.new_temp_file(suffix='.nim') as source_file:
             source_file.write(code)
             source_file.flush()
             with self.new_temp_file(suffix='.out') as binary_file:
@@ -132,8 +139,8 @@ class NimKernel(Kernel):
                                     p.returncode))
                     return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],
                             'user_expressions': {}}
-
-        p = self.create_jupyter_subprocess([self.master_path, binary_file.name])
+#self.master_path,
+        p = self.create_jupyter_subprocess([binary_file.name])
         while p.poll() is None:
             p.write_contents()
         p.write_contents()
