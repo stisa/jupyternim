@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "jupyter_nim_kernel",
+    "-f",
+    "{connection_file}"
+  ],
+  "display_name": "Nim",
+  "language": "nim"
+}
