@@ -8,7 +8,7 @@ echo "            | |     __/ |                                                 
 echo "            |_|    |___/                                                     "
 
 
-repository="https://github.com/..."
+repository="https://github.com/stisa/jupyter-nim-kernel.git"
 repo_name="jupyter-nim-kernel"
 
 set -x
