@@ -3,6 +3,8 @@
 This is a rough adaptation of https://github.com/brendan-rius/jupyter-c-kernel .
 It's mostly functional, there are probably bugs lurking around.
 
+Look at `example-notebook` for some examples.
+
 **NOTE**: Variables are **NOT** shared between blocks !! I'll try working on it when I have time
 
 ## Prereqs
@@ -24,6 +26,11 @@ with [nim](nim-lang.org).
 
 This a simple proof of concept. It's not intended to be used in production in its current shape.   
 
+## Known bugs
+
+- The output is littered with `Hint: [Processing]...` statements, despite using `--verbosity:0`
+- Every block is treated as a separate file ( not really a bug, it's just not yet implemented )
+- Others?
 ## License
 
 [MIT](LICENSE.txt)
