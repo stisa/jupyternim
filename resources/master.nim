@@ -2,6 +2,10 @@
 #NOTE this file is useless. It should coordinate variable exchange between blocks but it is WAY over my level of competence
 
 
+#http://nim-lang.org/docs/marshal.html ??
+
+
+
 discard """import os,dynlib
 
 type

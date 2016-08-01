@@ -6,8 +6,6 @@ import subprocess
 import tempfile
 import os
 import os.path as path
-import sys
-
 
 class RealTimeSubprocess(subprocess.Popen):
     """
