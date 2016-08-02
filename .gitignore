@@ -1,7 +1,5 @@
 .vscode/
 private/nimcache/
 nimcache/
-*.cs
-*.py
 src/
 refzmq.nim
