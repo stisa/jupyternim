@@ -1,25 +1,31 @@
+import private/sockets,private/utility
 
 type Kernel = object
     hb: Heartbeat
     exiting:bool
 
+
+
 proc shutdown(k:var Kernel)=
     k.exiting = true
-    #ioloop.IOLoop.instance().stop()
+    #ioloop.IOLoop.instance().stop() TODO
 
-# TODO on separate thread
+# TODO on separate thread?
 proc hbloop(k: var Kernel) =
-    while k.hb.beat :
-        discard
+    dprint(2, "Starting loop for 'Heartbeat'...")
+    while k.hb.beat() :
+        discard # should wait?
+    
     # if we exit the beat loop, start exiting
-    k.shutdown
+    dprint(2, "Exiting loop for 'Heartbeat',shutdown...")    
+    k.shutdown()
 
-def run_thread(loop, name):
+proc run_thread(loop:proc(),name:string) =
     dprint(2, "Starting loop for '%s'..." % name)
-    while not exiting:
+    while loop.running :
         dprint(2, "%s Loop!" % name)
         try:
-            loop.start()
+            loop.turn() # exec a single time
         except ZMQError as e:
             dprint(2, "%s ZMQError!" % name)
             if e.errno == errno.EINTR:
@@ -35,24 +41,3 @@ def run_thread(loop, name):
         else:
             dprint(2, "%s Break!" % name)
             break
-
-def heartbeat_loop():
-    dprint(2, "Starting loop for 'Heartbeat'...")
-    while not exiting:
-        dprint(3, ".", end="")
-        try:
-            zmq.device(zmq.FORWARDER, heartbeat_socket, heartbeat_socket)
-        except zmq.ZMQError as e:
-            if e.errno == errno.EINTR:
-                continue
-            else:
-                raise
-        else:
-            break
-
-
-# Utility functions:
-def shutdown():
-    global exiting
-    exiting = True
-    ioloop.IOLoop.instance().stop()

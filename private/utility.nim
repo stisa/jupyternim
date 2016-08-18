@@ -1,6 +1,6 @@
 import nuuid,json,times,hmac,zmq
 
-proc dprint(level:int,args:string,kwargs:varargs[string])=
+proc dprint*(level:int,args:string,kwargs:varargs[string])=
     ## Show debug information
     if level > 1:
         var s = "DEBUG: "&args

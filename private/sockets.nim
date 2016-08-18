@@ -38,8 +38,8 @@ type Control* = object
     stream*: TConnection
 
 proc createControl*(ip:string,controlport:string): Control =
-    result.router = zmq.connect(ip&ioport,zmq.ROUTER)
-    result.stream = zmq.connect(ip&ioport,zmq.STREAM)
+    result.router = zmq.connect(ip&controlport,zmq.ROUTER)
+    result.stream = zmq.connect(ip&controlport,zmq.STREAM)
     #result.stream.
     #iopub_stream.on_recv(io_handler)
 
