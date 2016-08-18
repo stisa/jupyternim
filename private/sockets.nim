@@ -78,5 +78,5 @@ proc createShell*(ip:string,shellport:string): Shell =
 
 proc recv*(s:Shell):string =
     var msg = s.recv
-    msg.shellhandler
+    #msg.shellhandler
     #TODO shell handler

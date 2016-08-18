@@ -1,4 +1,4 @@
-import nuuid,json,times,hmac,zmq
+import uuid,json,times,hmac,zmq
 
 proc dprint*(level:int,args:string,kwargs:varargs[string])=
     ## Show debug information
@@ -9,7 +9,7 @@ proc dprint*(level:int,args:string,kwargs:varargs[string])=
         echo s
 
 ## Return a new uuid for message id 
-proc msg_id():string = generateUUID()
+proc msg_id():string = uuid.gen()
 
 # nim string are bytes already??
 #def str_to_bytes(s):

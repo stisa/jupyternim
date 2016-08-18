@@ -1,6 +1,19 @@
-import private/sockets,private/utility
+#import private/sockets,private/utility
+import private/messages
+import os
 
-type Kernel = object
+#let programName = paramStr(0)
+let arguments = commandLineParams() # [0] should always be the connection file
+
+#echo programName
+assert(arguments.len >= 1, "Something wrong, no arguments passed to nimkernel??")
+# assert that arguments[0] is a json file, maybe slice [^4,end]==json
+
+var connectionmsg = arguments[0].parseConnMsg
+  
+echo $connectionmsg
+
+#[type Kernel = object
     hb: Heartbeat
     exiting:bool
 
@@ -40,4 +53,4 @@ proc run_thread(loop:proc(),name:string) =
                 raise
         else:
             dprint(2, "%s Break!" % name)
-            break
+            break]#
