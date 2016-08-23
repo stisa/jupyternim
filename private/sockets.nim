@@ -1,18 +1,20 @@
-import zmq
+import zmq,json,messages,asyncdispatch
 
 ##########################################
 # Heartbeat:
 type Heartbeat* = object
     socket*: TConnection
 
-proc createHB*(ip:string,hbport:string): Heartbeat =
-    result.socket = zmq.connect(ip&hbport)
+proc createHB*(ip:string,hbport:BiggestInt): Heartbeat =
+    echo "HB on: tcp://" & ip&":"& $hbport
+    result.socket = zmq.listen("tcp://"&ip&":"& $hbport)
 
-proc beat*(hb:Heartbeat):bool = 
-    var s :string = zmq.receive(hb.socket)
+proc beat*(hb:Heartbeat) = 
+
+    echo "beat receiving..."
+    var s = zmq.receive(hb.socket)
+    echo "beat recvd:   " #& $s
     hb.socket.send(s)
-    # if we haven't errored
-    result = true
 
 ##########################################
 # IOPub/Sub:
@@ -22,8 +24,8 @@ type IOSocket* = object
     stream*: TConnection
 
 proc createIOSocket*(ip:string,ioport:string): IOSocket =
-    result.pub = zmq.connect(ip&ioport,zmq.PUB)
-    result.stream = zmq.connect(ip&ioport,zmq.STREAM)
+    result.pub = zmq.listen("tcp://"&ip&":"& $ioport,zmq.PUB)
+    result.stream = zmq.listen("tcp://"&ip&":"& $ioport,zmq.STREAM)
     #result.stream.
     #iopub_stream.on_recv(io_handler)
 
@@ -38,8 +40,8 @@ type Control* = object
     stream*: TConnection
 
 proc createControl*(ip:string,controlport:string): Control =
-    result.router = zmq.connect(ip&controlport,zmq.ROUTER)
-    result.stream = zmq.connect(ip&controlport,zmq.STREAM)
+    result.router = zmq.listen("tcp://"&ip&":"& $controlport,zmq.ROUTER)
+    result.stream = zmq.listen("tcp://"&ip&":"& $controlport,zmq.STREAM)
     #result.stream.
     #iopub_stream.on_recv(io_handler)
 
@@ -56,9 +58,9 @@ type Stdin* = object
     router*: TConnection
     stream*: TConnection
 
-proc createStdin*(ip:string,ioport:string): Stdin =
-    result.router = zmq.connect(ip&ioport,zmq.ROUTER)
-    result.stream = zmq.connect(ip&ioport,zmq.STREAM)
+proc createStdin*(ip:string,stdinport:string): Stdin =
+    result.router = zmq.listen("tcp://"&ip&":"& $stdinport,zmq.ROUTER)
+    result.stream = zmq.listen("tcp://"&ip&":"& $stdinport,zmq.STREAM)
     #result.stream.
     #iopub_stream.on_recv(io_handler)
 
@@ -72,11 +74,120 @@ type Shell* = object
     socket*: zmq.TConnection
     stream*: zmq.TConnection
 
-proc createShell*(ip:string,shellport:string): Shell =
-    result.socket = zmq.connect(ip&shellport, zmq.ROUTER)
-    result.stream = zmq.connect(ip&shellport, zmq.STREAM)
+proc createShell*(ip:string,shellport:BiggestInt): Shell =
+    result.socket = zmq.listen("tcp://"&ip&":"& $shellport, zmq.ROUTER)
+    result.stream = zmq.connect("tcp://"&ip&":"& $shellport, zmq.DEALER)
 
-proc recv*(s:Shell):string =
-    var msg = s.recv
+proc recv*(s:Shell)= #:Future[string] {.async.} =
+    var msg : string = s.socket.receive()
+    deserialize(msg)
     #msg.shellhandler
+
     #TODO shell handler
+
+proc shellHandler(s:Shell,m:auto) =
+    var position = 0
+    var identities, msg = deserialize(m)
+    var content : JObject
+    if msg["header"]["msg_type"] == "kernel_info_request":
+        content = %* {
+            "protocol_version": "5.0",
+            "ipython_version": [1, 1, 0, ""],
+            "language_version": [0, 0, 1],
+            "language": "nim",
+            "implementation": "nim",
+            "implementation_version": "0.1",
+            "language_info": {
+                "name": "nim",
+                "version": "0.1",
+                "mimetype": "",
+                "file_extension": ".nim",
+                "pygments_lexer": "",
+                "codemirror_mode": "",
+                "nbconvert_exporter": "",
+            },
+            "banner": ""
+        }
+        s.stream.send("kernel_info_reply", content, parent_header=msg["header"], identities=identities)
+    
+#[]
+def shell_handler(msg):
+    global execution_count
+    dprint(1, "shell received:", msg)
+    position = 0
+    identities, msg = deserialize_wire_msg(msg)
+
+    # process request:
+
+    if msg['header']["msg_type"] == "execute_request":
+        dprint(1, "simple_kernel Executing:", pformat(msg['content']["code"]))
+        content = {
+            'execution_state': "busy",
+        }
+        send(iopub_stream, 'status', content, parent_header=msg['header'])
+        #######################################################################
+        content = {
+            'execution_count': execution_count,
+            'code': msg['content']["code"],
+        }
+        send(iopub_stream, 'execute_input', content, parent_header=msg['header'])
+        #######################################################################
+        content = {
+            'name': "stdout",
+            'text': "hello, world",
+        }
+        send(iopub_stream, 'stream', content, parent_header=msg['header'])
+        #######################################################################
+        content = {
+            'execution_count': execution_count,
+            'data': {"text/plain": "result!"},
+            'metadata': {}
+        }
+        send(iopub_stream, 'execute_result', content, parent_header=msg['header'])
+        #######################################################################
+        content = {
+            'execution_state': "idle",
+        }
+        send(iopub_stream, 'status', content, parent_header=msg['header'])
+        #######################################################################
+        metadata = {
+            "dependencies_met": True,
+            "engine": engine_id,
+            "status": "ok",
+            "started": datetime.datetime.now().isoformat(),
+        }
+        content = {
+            "status": "ok",
+            "execution_count": execution_count,
+            "user_variables": {},
+            "payload": [],
+            "user_expressions": {},
+        }
+        send(shell_stream, 'execute_reply', content, metadata=metadata,
+            parent_header=msg['header'], identities=identities)
+        execution_count += 1
+    elif msg['header']["msg_type"] == "kernel_info_request":
+        content = {
+            "protocol_version": "5.0",
+            "ipython_version": [1, 1, 0, ""],
+            "language_version": [0, 0, 1],
+            "language": "simple_kernel",
+            "implementation": "simple_kernel",
+            "implementation_version": "1.1",
+            "language_info": {
+                "name": "simple_kernel",
+                "version": "1.0",
+                'mimetype': "",
+                'file_extension': ".py",
+                'pygments_lexer': "",
+                'codemirror_mode': "",
+                'nbconvert_exporter': "",
+            },
+            "banner": ""
+        }
+        send(shell_stream, 'kernel_info_reply', content, parent_header=msg['header'], identities=identities)
+    elif msg['header']["msg_type"] == "history_request":
+        dprint(1, "unhandled history request")
+    else:
+        dprint(1, "unknown msg_type:", msg['header']["msg_type"])
+    ]#

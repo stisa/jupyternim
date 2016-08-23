@@ -11,7 +11,6 @@ proc dprint*(level:int,args:string,kwargs:varargs[string])=
 ## Return a new uuid for message id 
 proc msg_id():string = uuid.gen()
 
-# nim string are bytes already??
 #def str_to_bytes(s):
 #    return s.encode('ascii') if PYTHON3 else bytes(s)
 

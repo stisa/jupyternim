@@ -3,3 +3,6 @@ private/nimcache/
 nimcache/
 src/
 refzmq.nim
+fzmq.nim
+*.exe
+nimsuggest.log
