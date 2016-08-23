@@ -1,6 +1,6 @@
 import private/sockets#,private/utility
 import private/messages
-import os
+import os, threadpool, asyncdispatch
 
 type Kernel = object
     hb: Heartbeat
@@ -62,7 +62,12 @@ assert(arguments.len >= 1, "Something wrong, no arguments passed to nimkernel??"
 # assert that arguments[0] is a json file, maybe slice [^4,end]==json
 
 var connection = arguments[0].parseConnMsg
-var kernel = connection.init()  
-while true: # fuck this, move to async/await
-    kernel.hb.beat()
-    kernel.shell.recv()
+var kernel = connection.init()
+
+proc loop() {.async.}=
+  while true: # fuck this, move to async/await
+      asyncCheck kernel.hb.beat()
+      kernel.shell.recv()
+
+asyncCheck loop()
+runForever()
