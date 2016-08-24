@@ -1,8 +1,9 @@
 import json, strutils, zmq,times,uuid, hmac, nimSHA2,md5
 
 type WireType * = enum
-  Unknown  = 0,
+  Unknown  = 0
   Kernel_Info = 1
+  Execute = 2
   Status = 9
   Shutdown = 10
 
@@ -116,6 +117,7 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
       of "kernel_info_request": result.msg_type = WireType.Kernel_Info
       of "shutdown_request" : result.msg_type = WireType.Shutdown
       of "comm_open": echo "[Nimkernel]: useless msg: comm_open"
+      of "execute_request": result.msg_type = WireType.Execute
       else: 
         result.msg_type = WireType.Unknown
         echo "Unknown WireMsg: ", result.header # Dump the header for unknown messages 

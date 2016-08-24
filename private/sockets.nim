@@ -1,4 +1,5 @@
 import zmq,json, messaging, threadpool
+import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
 type Heartbeat* = object
   socket*: TConnection
@@ -44,43 +45,51 @@ proc createShell*(ip:string,shellport:BiggestInt,key:string,pub:IOPub): Shell =
   result.socket = zmq.listen("tcp://"&ip&":"& $shellport, zmq.ROUTER)
   result.key = key
   result.pub = pub
- 
-proc handle(s:Shell,m:WireMessage) =
+
+proc handleKernelInfo(s:Shell,m:WireMessage) =
   var content : JsonNode
+  spawn s.pub.send("busy") # Tell the client we are busy
+  echo "[Nimkernel]: sending: Kernelinfo sending busy"
+  content = %* {
+    "protocol_version": "5.0",
+    "ipython_version": [1, 1, 0, ""],
+    "language_version": [0, 14, 2],
+    "language": "nim",
+    "implementation": "nimBsd",
+    "implementation_version": "0.1",
+    "language_info": {
+      "name": "nim",
+      "version": "0.1",
+      "mimetype": "text/x-nimrod",
+      "file_extension": ".nim",
+      "pygments_lexer": "",
+      "codemirror_mode": "",
+      "nbconvert_exporter": "",
+    },
+    "banner": ""
+  }
+  
+  s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
+  echo "[Nimkernel]: sending kernel info reply and idle"
+  spawn s.pub.send("idle") #move to thread
+
+proc handleExecute(shell:Shell,msg:WireMessage) =
+  var code = msg.content["code"].str # The code to be executed
+  #discard
+  compiler.execute(code)
+
+proc handle(s:Shell,m:WireMessage) =
   if m.msg_type == Kernel_Info:
-    spawn s.pub.send("busy") # Tell the client we are busy
-    content = %* {
-      "protocol_version": "5.0",
-      "ipython_version": [1, 1, 0, ""],
-      "language_version": [0, 14, 2],
-      "language": "nim",
-      "implementation": "nimBsd",
-      "implementation_version": "0.1",
-      "language_info": {
-        "name": "nim",
-        "version": "0.1",
-        "mimetype": "text/x-nimrod",
-        "file_extension": ".nim",
-        "pygments_lexer": "",
-        "codemirror_mode": "",
-        "nbconvert_exporter": "",
-      },
-      "banner": ""
-    }
-    #echo "m header ", m.header
-    
-    s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
-    echo "[Nimkernel]: sending kernel info reply and idle"
-    spawn s.pub.send("idle") #move to thread
+    handleKernelInfo(s,m)
+  elif m.msg_type == Execute:
+    handleExecute(s,m)
   elif m.msg_type == Shutdown :
     echo "[Nimkernel]: kernel wants to shutdown"
   else:
     echo "[Nimkernel]: unhandled message", m
 
 proc receive*(shell:Shell) =
-  spawn shell.pub.send("busy") # Tell the client we are busy
   let recvdmsg : WireMessage = shell.socket.receive_wire_msg()
-  spawn shell.pub.send("idle") # Tell the client we are free
-  echo "[Nimkernel]: sending: ", $recvdmsg.msg_type, " sending busy"
+  echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
   shell.handle(recvdmsg)
 
