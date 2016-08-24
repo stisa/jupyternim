@@ -3,6 +3,7 @@ import json, strutils, zmq,times,uuid
 type WireType * = enum
   Unknown  = -1,
   Kernel_Info = 0
+  Shutdown = 10
 
 type ConnectionMessage * = object 
   ## The connection message the notebook sends when starting
@@ -48,12 +49,22 @@ type WireMessage * = object
 
 proc receive_wire_msg*(c:TConnection):WireMessage =
   var raw : seq[string] = @[]
-  
+  var pre_dicts : string = ""
+  while predicts.find("<IDS|MSG>")== -1:
+    let rc = c.receive()
+    if rc!=nil:
+      echo "received: ", rc
+      pre_dicts &= rc # Is it even possible to receive empty strings?
+  raw.add(predicts[0..^9])
+  raw.add(predicts[^9..pre_dicts.high()])
+
+  echo raw[0],"---",raw[1]
+
   while raw.len<7:
     let rc = c.receive()
     if rc != "":
-      raw &= rc # Is it even possible to receive empty strings?
-  
+      raw&=rc
+
   result.ident = raw[0]
   if( raw[1]!="<IDS|MSG>"): 
     echo "[Nimkernel]:proc receive wire msg: Malformed message?? Follows:"
@@ -84,11 +95,12 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
   #else: echo "[Nimkernel]: NIMNOUSER"
   if ( parent.header["session"]!=nil):
     echo "[Nimkernel]: ", parent.header["session"]
-    var ss = parent.header["session"].str
+    #var ss = parent.header["session"].str
+  else: echo "[Nimkernel]: nil session "
   var header: JsonNode = %* {
     "msg_id" : uuid.gen(), # typically UUID, must be unique per message
     "username" : "username",
-    "session" : ss, # typically UUID, should be unique per session
+    "session" : parent.header["session"], # typically UUID, should be unique per session
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
     "msg_type" : reply_type, # All recognized message type strings are listed below.
     "version" : "5.0", # the message protocol version
@@ -98,7 +110,7 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
 
   reply &= $parent.header # add parent header
   
-  reply &= "{}" # metadata
+  reply &= "{ }" # metadata
   
   reply &= $content # Add content
 

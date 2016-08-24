@@ -27,5 +27,5 @@ var kernel :Kernel = connmsg.init()
 
 spawn kernel.hb.beat()
 
-for i in 0..5:
+for i in 0..1:
   kernel.shell.receive()

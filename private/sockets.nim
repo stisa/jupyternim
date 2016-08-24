@@ -48,7 +48,9 @@ proc handle(s:Shell,m:WireMessage) =
       "banner": ""
     }
     #echo "m header ", m.header
-    s.stream.send_wire_msg("kernel_info_reply", m , content, s.key)
+    s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
+  elif m.msg_type == Shutdown :
+    echo "[Nimkernel]: kernel wants to shutdown"
 
 proc receive*(shell:Shell) =
   #echo "[Nimkernel]: Shell: ", s.socket.receive()
