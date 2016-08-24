@@ -1,8 +1,9 @@
-import json, strutils, zmq,times,uuid
+import json, strutils, zmq,times,uuid, hmac, nimSHA2,md5
 
 type WireType * = enum
-  Unknown  = -1,
-  Kernel_Info = 0
+  Unknown  = 0,
+  Kernel_Info = 1
+  Status = 9
   Shutdown = 10
 
 type ConnectionMessage * = object 
@@ -12,6 +13,40 @@ type ConnectionMessage * = object
   key*: string
   hb_port*,iopub_port*,shell_port*,stdin_port*,control_port*: int
   kernel_name*: string
+
+proc send_multipart(c:TConnection,msglist:seq[string]) =
+  ## sends a message over the connection as multipart.
+  for i,msg in msglist:
+    var m: TMsg
+    if msg_init(m, msg.len) != 0:
+        zmqError()
+
+    copyMem(msg_data(m), cstring(msg), msg.len)
+    if (i==msglist.len-1):
+      if msg_send(m, c.s, 0) == -1: # 0->Last message, not SNDMORE
+          zmqError()
+    else:
+      if msg_send(m, c.s, 2) == -1: # 2->SNDMORE
+        zmqError()
+    
+    # no close msg after a send
+
+proc sign*(msg:string,key:string):string =
+  ##Sign a message with a secure signature.
+  result = hmac.hmac_sha256(key,msg).hex.toLower
+
+#[
+  public string sign(List<string> list) {
+            hmac.Initialize();
+            foreach (string item in list) {
+		byte [] sourcebytes = Encoding.UTF8.GetBytes(item);
+                hmac.TransformBlock(sourcebytes, 0, sourcebytes.Length, null, 0);
+            }
+            hmac.TransformFinalBlock(new byte [0], 0, 0);
+	    return BitConverter.ToString(hmac.Hash).Replace("-", "").ToLower();
+	}
+
+]#
 
 proc parseConnMsg*(connfile:string):ConnectionMessage =
   #var connectionfile = connfile.readFile
@@ -84,53 +119,62 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
       else: 
         result.msg_type = WireType.Unknown
         echo "Unknown WireMsg: ", result.header # Dump the header for unknown messages 
+    else:
+      echo "NO WIRE MESSAGE TYPE???????????????"
 
 proc getISOstr*():string = getDateStr()&'T'&getClockStr()
     
 proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content:JsonNode,key:string) =
-  var reply : string = ""
-  reply &= parent.ident # Add ident
-  reply &= "<IDS|MSG>" # add separator
-  reply &= " " # add signature TODO
-  
   var header: JsonNode = %* {
     "msg_id" : uuid.gen(), # typically UUID, must be unique per message
-    "username" : parent.header["username"],
-    "session" : parent.header["session"], # typically UUID, should be unique per session
+    "username" : "kernel",
+    "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK. parent.header["session"], # typically UUID, should be unique per session
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
-    "msg_type" : reply_type, # All recognized message type strings are listed below.
+    "msg_type" : reply_type,
     "version" : "5.0", # the message protocol version
   }
 
-  reply &= $header # add header
+  var metadata : JSonNode = %* { }
 
-  reply &= $parent.header # add parent header
+  var reply = @[parent.ident] # Add ident
   
-  reply &= "{ }" # metadata
+  reply &= "<IDS|MSG>" # add separator
   
-  reply &= $content # Add content
+  let secondpartreply = $header & $parent.header & $metadata & $content
+  reply &= sign(secondpartreply,key) # add signature TODO
+  reply &= $header 
+  reply &= $parent.header 
+  reply &= $metadata 
+  reply &= $content
+   
+  c.send_multipart(reply)
+  #echo "[Nimkernel]: sent\n"& $reply[3]
+  #for r in reply : c.send(r) # send the reply to jupyter 
 
-  c.send(reply) # send the reply to jupyter 
+proc send_wire_msg_no_parent*(c:TConnection, reply_type:string, content:JsonNode,key:string) =
+  var header: JsonNode = %* {
+    "msg_id" : uuid.gen(), # typically UUID, must be unique per message
+    "username" : "kernel",
+    "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK. parent.header["session"], # typically UUID, should be unique per session
+    "date": getISOstr(), # ISO 8601 timestamp for when the message is created
+    "msg_type" : reply_type,
+    "version" : "5.0", # the message protocol version
+  }
 
+  var metadata : JSonNode = %* { }
 
-#var prsmsg : 
-proc deserialize*(msg:string):JsonNode =#: tuple[ id:string, m: JsonNode] =
-    #let delim_ind = msg.find()
-    echo "startmes--------------"
-    echo msg
-  #  if (msg[0]=='{'):
-  #    var parsedmsg : JsonNode = parseJson(msg)
-  #    echo "parsed",parsedmsg
-  #  elif msg[0]!=' ':
-  #    var splitted = msg.split("<IDS|MSG>")
-   # var identities = splitted[0]
-   # var m_signature = splitted[1].split("\n") 
-    #var m_frames = splitted[1][1..high(splitted[1])]
-    #var m : JsonNode
-    #echo "splited"
-    #echo splitted
-    #echo "ident"
-   # echo identities
-    #echo "newlnied"
-  #  echo m_signature
-    echo "endmes-----------------------"
+  var reply = @["kernel"] # Add ident
+  reply &= "<IDS|MSG>" # add separator
+  
+  let secondpartreply = $header & $ %*{} &  $metadata & $content
+  reply &= sign(secondpartreply,key) # add signature TODO
+  reply &= $header #3
+  reply &= $ %* {}
+  reply &= $metadata
+  reply &= $content
+
+  c.send_multipart(reply)
+  #echo "[Nimkernel]: sent\n"& $reply[3]
+  #var rr : string = ""
+  #for r in reply: rr&=r # send the reply to jupyter, multi part 
+  #c.send(rr)

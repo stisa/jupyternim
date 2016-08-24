@@ -23,3 +23,10 @@ Handles message specifications exposing low level procs like send, receive, deco
 Defines sockets types , how they are created, how their loops work
 
 Once messaging works, we can look at running code etc.
+
+NOtes
+-----
+
+Messages must be multipart
+
+signature must be lowercase

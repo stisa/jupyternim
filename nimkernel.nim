@@ -4,7 +4,7 @@ import os,threadpool
 type KernelObj = object
   hb*: Heartbeat # The heartbeat socket object
   shell*: Shell
-  #shell: Shell
+  pub*: IOPub
 type Kernel = ref KernelObj
 
 
@@ -12,7 +12,10 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   echo "[Nimkernel]: Initing"
   new result
   result.hb = createHB(connmsg.ip,connmsg.hb_port) # Initialize the heartbeat socket
-  result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key )
+  result.pub = createIOPub( connmsg.ip, connmsg.iopub_port, connmsg.key ) 
+  #echo "resultpub >> ",result.pub
+  result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key, result.pub )
+  
 
 proc shutdown(k: Kernel) {.noconv.}=
   echo "[Nimkernel]: Shutting Down"
@@ -32,3 +35,4 @@ spawn kernel.hb.beat()
 #for i in 0..1:
 while true:
   kernel.shell.receive()
+  
