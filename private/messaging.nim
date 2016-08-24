@@ -49,6 +49,7 @@ type WireMessage * = object
 
 proc receive_wire_msg*(c:TConnection):WireMessage =
   var raw : seq[string] = @[]
+  #[]
   var pre_dicts : string = ""
   while predicts.find("<IDS|MSG>")== -1:
     let rc = c.receive()
@@ -59,7 +60,7 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
   raw.add(predicts[^9..pre_dicts.high()])
 
   echo raw[0],"---",raw[1]
-
+]#
   while raw.len<7:
     let rc = c.receive()
     if rc != "":
@@ -78,6 +79,7 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
     if result.header.hasKey("msg_type") : 
       case result.header["msg_type"].str:
       of "kernel_info_request": result.msg_type = WireType.Kernel_Info
+      of "shutdown_request" : result.msg_type = WireType.Shutdown
       of "comm_open": echo "[Nimkernel]: useless msg: comm_open"
       else: 
         result.msg_type = WireType.Unknown
@@ -90,16 +92,10 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
   reply &= parent.ident # Add ident
   reply &= "<IDS|MSG>" # add separator
   reply &= " " # add signature TODO
-  #if parent.header.hasKey("username"): 
-  #  phu = parent.header["username"]
-  #else: echo "[Nimkernel]: NIMNOUSER"
-  if ( parent.header["session"]!=nil):
-    echo "[Nimkernel]: ", parent.header["session"]
-    #var ss = parent.header["session"].str
-  else: echo "[Nimkernel]: nil session "
+  
   var header: JsonNode = %* {
     "msg_id" : uuid.gen(), # typically UUID, must be unique per message
-    "username" : "username",
+    "username" : parent.header["username"],
     "session" : parent.header["session"], # typically UUID, should be unique per session
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
     "msg_type" : reply_type, # All recognized message type strings are listed below.

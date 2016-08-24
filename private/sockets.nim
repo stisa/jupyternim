@@ -18,12 +18,12 @@ proc beat*(hb:Heartbeat) =
 
 type Shell* = object
   socket*: TConnection
-  stream*: TConnection
+#  stream*: TConnection
   key*: string # session key
 
 proc createShell*(ip:string,shellport:BiggestInt,key:string): Shell =
   result.socket = zmq.listen("tcp://"&ip&":"& $shellport, zmq.ROUTER)
-  result.stream = zmq.connect("tcp://"&ip&":"& $shellport, zmq.DEALER)
+ # result.stream = zmq.connect("tcp://"&ip&":"& $shellport, zmq.DEALER)
   result.key = key
  
 proc handle(s:Shell,m:WireMessage) =
@@ -47,7 +47,7 @@ proc handle(s:Shell,m:WireMessage) =
       },
       "banner": ""
     }
-    #echo "m header ", m.header
+    echo "m header ", m.header
     s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
   elif m.msg_type == Shutdown :
     echo "[Nimkernel]: kernel wants to shutdown"

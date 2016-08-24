@@ -14,7 +14,7 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   result.hb = createHB(connmsg.ip,connmsg.hb_port) # Initialize the heartbeat socket
   result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key )
 
-proc shutdown(k: Kernel) =
+proc shutdown(k: Kernel) {.noconv.}=
   echo "[Nimkernel]: Shutting Down"
 
 let arguments = commandLineParams() # [0] should always be the connection file
@@ -25,7 +25,10 @@ var connmsg = arguments[0].parseConnMsg()
 
 var kernel :Kernel = connmsg.init()
 
+#addQuitProc( shutdown(kernel) )
+
 spawn kernel.hb.beat()
 
-for i in 0..1:
+#for i in 0..1:
+while true:
   kernel.shell.receive()
