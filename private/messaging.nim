@@ -7,6 +7,7 @@ type WireType * = enum
   Status = 9
   Shutdown = 10
 
+
 type ConnectionMessage * = object 
   ## The connection message the notebook sends when starting
   ip*: string
@@ -14,6 +15,14 @@ type ConnectionMessage * = object
   key*: string
   hb_port*,iopub_port*,shell_port*,stdin_port*,control_port*: int
   kernel_name*: string
+
+
+### Nicer zmq ##############################
+type PollEvent* {.pure.}= enum
+  Unknown = 0
+  In = 1
+  Out = 2
+  Err = 4
 
 proc send_multipart(c:TConnection,msglist:seq[string]) =
   ## sends a message over the connection as multipart.
@@ -31,6 +40,13 @@ proc send_multipart(c:TConnection,msglist:seq[string]) =
         zmqError()
     
     # no close msg after a send
+
+proc poll*(items: var openarray[TPollItem],timeout:int= -1):int =
+  ## returns the number of items with messages waiting
+  # need var so items[0] gets an addr
+  result = zmq.poll( addr items[0], items.len.cint,timeout)
+  
+############################################
 
 proc sign*(msg:string,key:string):string =
   ##Sign a message with a secure signature.

@@ -1,5 +1,5 @@
 import zmq,json, messaging, threadpool
-import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
+#import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
 type Heartbeat* = object
   socket*: TConnection
@@ -76,7 +76,8 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
 proc handleExecute(shell:Shell,msg:WireMessage) =
   var code = msg.content["code"].str # The code to be executed
   #discard
-  compiler.execute(code)
+  echo "[NIMKERNEL]: ",code
+  #compiler.execute(code)
 
 proc handle(s:Shell,m:WireMessage) =
   if m.msg_type == Kernel_Info:
