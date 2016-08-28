@@ -5,6 +5,7 @@ type KernelObj = object
   hb*: Heartbeat # The heartbeat socket object
   shell*: Shell
   pub*: IOPub
+  control*: Control
   
 type Kernel = ref KernelObj
 
@@ -14,6 +15,7 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   result.hb = createHB(connmsg.ip,connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub( connmsg.ip, connmsg.iopub_port, connmsg.key ) # Initialize iopub 
   result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key, result.pub ) # Initialize shell
+  result.control = createControl( connmsg.ip, connmsg.control_port, connmsg.key ) # Initialize iopub 
   #result.pollitems
 
 proc shutdown(k: Kernel) {.noconv.}=
@@ -32,27 +34,16 @@ var kernel :Kernel = connmsg.init()
 
 spawn kernel.hb.beat()
 
-var pollers: array[1, TPollItem]
-#new pollers
-pollers[0].socket = kernel.shell.socket.s
-pollers[0].events = ZMQ_POLLIN
-#pollers[1].socket = kernel.pub.socket.s
-#pollers[1].events = ZMQ_POLLIN
+#proc poll(k:Kernel): bool =
+#  if k.pub.getsockopt(EVENTS) == 3 : return true
+#  elif k.shell.getsockopt(EVENTS) == 3 : return true
+#  else : sleep(100) # wait a bit before trying again
 
-#for i in 0..1:
-proc poll2*(items: pointer, nitems: cint, timeout: int): cint{.
-  cdecl, importc: "zmq_poll", dynlib: zmqdll.}
-
+echo "[Nimkernel]: Starting to poll..."
 while true:
-  echo "[Nimkernel]: Waiting on poll..."
-  var waiting = poll( addr pollers[0], 1, 10000 )
-  echo waiting
-  if (waiting == -1): echo errno()
-  elif ( waiting != 0 ): # crash???
-    #echo "polledINNNNNNNNNNNNNN", pollers[0].revents
-    echo "pol",pollers[0]
-    #[if pollers[0].revents == 0 :
-      kernel.shell.receive()
-    if pollers[1].revents == 0 :
-      kernel.pub.receive()
-]#
+  #echo "[Nimkernel]: Waiting on poll..."
+  if kernel.control.socket.getsockopt(EVENTS) == 3 : kernel.control.receive()
+  elif kernel.shell.socket.getsockopt(EVENTS) == 3 : kernel.shell.receive()
+  elif kernel.pub.socket.getsockopt(EVENTS) == 3 : kernel.pub.receive()
+
+  else : sleep(100) # wait a bit before trying again

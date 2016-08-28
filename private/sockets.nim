@@ -94,3 +94,22 @@ proc receive*(shell:Shell) =
   echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
   shell.handle(recvdmsg)
 
+type Control* = object
+    socket*: TConnection
+    key*:string
+
+proc createControl*(ip:string,port:BiggestInt,key:string): Control =
+  result.socket = zmq.listen("tcp://"&ip&":"& $port, zmq.ROUTER)
+  result.key = key
+
+proc handle(c:Control,m:WireMessage) =
+  if m.msg_type == Shutdown:
+    var content : JsonNode
+    echo "[Nimkernel] shutdown requested"
+    content = %* { "restart": false }    
+    c.socket.send_wire_msg("shutdown_reply", m , content, c.key)
+
+proc receive*(cont:Control) =
+  let recvdmsg : WireMessage = cont.socket.receive_wire_msg()
+  echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
+  cont.handle(recvdmsg)

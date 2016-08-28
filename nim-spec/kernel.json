@@ -1,6 +1,6 @@
 {
- "argv": ["C:\\Users\\silvio\\Documents\\Dev\\nim\\jupyter-kernel\\nimupyter\\nim-based\\nimkernel",  "{connection_file}"],
+ "argv": ["C:\\Users\\silvio\\Documents\\Dev\\nim\\jupyter-kernel\\nimupyter\\nimkernel",  "{connection_file}"],
   "display_name": "NimBsed",
-  "language": "nimbsed",
+  "language": "nim",
   "file_extension": ".nim"
 }

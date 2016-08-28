@@ -41,11 +41,16 @@ proc send_multipart(c:TConnection,msglist:seq[string]) =
     
     # no close msg after a send
 
-proc poll*(items: var openarray[TPollItem],timeout:int= -1):int =
+proc poll*(items: var openarray[TPollItem],timeout:clong= -1):int =
   ## returns the number of items with messages waiting
   # need var so items[0] gets an addr
   result = zmq.poll( addr items[0], items.len.cint,timeout)
   
+proc getsockopt* [T] (c: TConnection,opt:T) : cint =
+  # TODO: return a the opt, not an int
+  var size = sizeof(result)
+  if getsockopt(c.s, opt, addr(result), addr(size)) != 0: zmqError()
+
 ############################################
 
 proc sign*(msg:string,key:string):string =
@@ -157,6 +162,8 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
   var reply = @[parent.ident] # Add ident
   
   reply &= "<IDS|MSG>" # add separator
+  
+  # TODO look were status goes
   
   let secondpartreply = $header & $parent.header & $metadata & $content
   reply &= sign(secondpartreply,key) # add signature TODO
