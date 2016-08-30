@@ -110,13 +110,63 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   spawn shell.pub.send("idle") #move to thread
   #compiler.execute(code)
 
+proc handleIntrospection(shell:Shell,msg:WireMessage) =
+  let code = msg.content["code"].str
+  let cpos = msg.content["cursor_pos"].num
+  # ask nimsuggest about the code
+  var content = %* {
+    "status" : "ok", #or "error"
+    "found" : false, # found should be true if an object was found, false otherwise
+    "data" : {}, #TODO nimsuggest??
+    "metadata" : {},
+  }
+  shell.socket.send_wire_msg("inspect_reply", msg , content, shell.key)
+
+proc handleCompletion(shell:Shell, msg:WireMessage) =
+  let code = msg.content["code"].str
+  let cpos = msg.content["cursor_pos"].num
+  # TODO completion+nimsuggest
+  var content = %* {
+    # The list of all matches to the completion request, such as
+    # ['a.isalnum', 'a.isalpha'] for the above example.
+    "matches" : [],
+    # The range of text that should be replaced by the above matches when a completion is accepted.
+    # typically cursor_end is the same as cursor_pos in the request.
+    "cursor_start": 0,
+    "cursor_end" : 1,
+
+    # Information that frontend plugins might use for extra display information about completions.
+    "metadata" : {},
+
+    # status should be 'ok' unless an exception was raised during the request,
+    # in which case it should be 'error', along with the usual error message content
+    # in other messages.
+    "status" : "ok"
+  }
+  shell.socket.send_wire_msg("complete_reply", msg , content, shell.key)
+
+proc handleHistory(shell:Shell, msg:WireMessage) =
+  echo "[Nimkernel]: Unhandled history"
+  var content = %* {
+    # A list of 3 tuples, either:
+    # (session, line_number, input) or
+    # (session, line_number, (input, output)),
+    # depending on whether output was False or True, respectively.
+    "history" : [],
+  }
+
 proc handle(s:Shell,m:WireMessage) =
   if m.msg_type == Kernel_Info:
     handleKernelInfo(s,m)
   elif m.msg_type == Execute:
     handleExecute(s,m)
   elif m.msg_type == Shutdown :
+    # TODO quit
     echo "[Nimkernel]: kernel wants to shutdown"
+  elif m.msg_type == Introspection : handleIntrospection(s,m)
+  elif m.msg_type == Completion : handleCompletion(s,m)
+  elif m.msg_type == History : handleHistory(s,m)
+  elif m.msg_type == Complete : discard # TODO
   else:
     echo "[Nimkernel]: unhandled message", m
 
@@ -139,7 +189,8 @@ proc handle(c:Control,m:WireMessage) =
     echo "[Nimkernel] shutdown requested"
     content = %* { "restart": false }    
     c.socket.send_wire_msg("shutdown_reply", m , content, c.key)
-
+  #if m.msg_type ==
+   
 proc receive*(cont:Control) =
   let recvdmsg : WireMessage = cont.socket.receive_wire_msg()
   echo "[Nimkernel]: sending: ", $recvdmsg.msg_type

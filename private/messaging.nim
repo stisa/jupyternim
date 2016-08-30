@@ -4,6 +4,13 @@ type WireType * = enum
   Unknown  = 0
   Kernel_Info = 1
   Execute = 2
+
+  Introspection = 3
+  Completion = 4
+  History = 5
+  Complete = 6
+  Comm_info = 7
+  
   Status = 9
   Shutdown = 10
 
@@ -18,12 +25,6 @@ type ConnectionMessage * = object
 
 
 ### Nicer zmq ##############################
-type PollEvent* {.pure.}= enum
-  Unknown = 0
-  In = 1
-  Out = 2
-  Err = 4
-
 proc send_multipart(c:TConnection,msglist:seq[string]) =
   ## sends a message over the connection as multipart.
   for i,msg in msglist:
@@ -39,13 +40,6 @@ proc send_multipart(c:TConnection,msglist:seq[string]) =
       if msg_send(m, c.s, 2) == -1: # 2->SNDMORE
         zmqError()
     
-    # no close msg after a send
-
-proc poll*(items: var openarray[TPollItem],timeout:clong= -1):int =
-  ## returns the number of items with messages waiting
-  # need var so items[0] gets an addr
-  result = zmq.poll( addr items[0], items.len.cint,timeout)
-  
 proc getsockopt* [T] (c: TConnection,opt:T) : cint =
   # TODO: return a the opt, not an int
   var size = sizeof(result)
@@ -56,19 +50,6 @@ proc getsockopt* [T] (c: TConnection,opt:T) : cint =
 proc sign*(msg:string,key:string):string =
   ##Sign a message with a secure signature.
   result = hmac.hmac_sha256(key,msg).hex.toLower
-
-#[
-  public string sign(List<string> list) {
-            hmac.Initialize();
-            foreach (string item in list) {
-		byte [] sourcebytes = Encoding.UTF8.GetBytes(item);
-                hmac.TransformBlock(sourcebytes, 0, sourcebytes.Length, null, 0);
-            }
-            hmac.TransformFinalBlock(new byte [0], 0, 0);
-	    return BitConverter.ToString(hmac.Hash).Replace("-", "").ToLower();
-	}
-
-]#
 
 proc parseConnMsg*(connfile:string):ConnectionMessage =
   #var connectionfile = connfile.readFile
@@ -106,7 +87,7 @@ type WireMessage * = object
 
 proc receive_wire_msg*(c:TConnection):WireMessage =
   var raw : seq[string] = @[]
-  #[]
+#[
   var pre_dicts : string = ""
   while predicts.find("<IDS|MSG>")== -1:
     let rc = c.receive()
@@ -137,8 +118,13 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
       case result.header["msg_type"].str:
       of "kernel_info_request": result.msg_type = WireType.Kernel_Info
       of "shutdown_request" : result.msg_type = WireType.Shutdown
-      of "comm_open": echo "[Nimkernel]: useless msg: comm_open"
       of "execute_request": result.msg_type = WireType.Execute
+      of "inspect_request": result.msg_type = WireType.Introspection
+      of "complete_request": result.msg_type = WireType.Completion
+      of "history_request": result.msg_type = WireType.History
+      of "is_complete_request": result.msg_type = WireType.Complete
+      #of "comm_info_request": result.msg_type = WireType.Comm_info <- in spec 5.1
+      of "comm_open": echo "[Nimkernel]: useless msg: comm_open"
       else: 
         result.msg_type = WireType.Unknown
         echo "Unknown WireMsg: ", result.header # Dump the header for unknown messages 
