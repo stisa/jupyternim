@@ -2,7 +2,7 @@ import zmq,json, threadpool,os, osproc,strutils
 import messaging
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
-var execcount {.global.} = 0
+var execcount {.global.} = 0 # Monotonically increasing counter 
 
 type Heartbeat* = object
   socket*: TConnection
@@ -12,7 +12,6 @@ type IOPub* = object
   key*:string
   lastmsg*:WireMessage
 
-
 type
   ShellObj = object
     socket*: TConnection
@@ -21,6 +20,7 @@ type
   Shell* = ref ShellObj
 
 proc createHB*(ip:string,hbport:BiggestInt): Heartbeat =
+  ## Create the heartbeat socket
   result.socket = zmq.listen("tcp://"&ip&":"& $hbport)
 
 proc beat*(hb:Heartbeat) =
@@ -34,6 +34,7 @@ proc beat*(hb:Heartbeat) =
       hb.socket.send(s) # Echo back what we read
 
 proc createIOPub*(ip:string,port:BiggestInt , key:string): IOPub =
+  ## Create the IOPub socket
 # TODO: transport
   result.socket = zmq.listen("tcp://"&ip&":"& $port,zmq.PUB)
   result.key = key
@@ -42,10 +43,12 @@ proc send_state(pub:IOPub,state:string,) {.inline.}=
   pub.socket.send_wire_msg_no_parent("status", %* { "execution_state": state },pub.key)
 
 proc receive*(pub:IOPub) =
+  ## Receive a message on the IOPub socket
   let recvdmsg : WireMessage = pub.socket.receive_wire_msg()
   echo "[Nimkernel]: pub received:\n", $recvdmsg
   
 proc createShell*(ip:string,shellport:BiggestInt,key:string,pub:IOPub): Shell =
+  ## Create a shell socket
   new result
   result.socket = zmq.listen("tcp://"&ip&":"& $shellport, zmq.ROUTER)
   result.key = key
@@ -217,6 +220,7 @@ proc handle(s:Shell,m:WireMessage) =
     echo "[Nimkernel]: unhandled message: ", m.msg_type
 
 proc receive*(shell:Shell) =
+  ## Receive a message on the shell socket, decode it and handle operations
   let recvdmsg : WireMessage = shell.socket.receive_wire_msg()
   echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
   shell.handle(recvdmsg)
@@ -226,6 +230,7 @@ type Control* = object
     key*:string
 
 proc createControl*(ip:string,port:BiggestInt,key:string): Control =
+  ## Create the control socket
   result.socket = zmq.listen("tcp://"&ip&":"& $port, zmq.ROUTER)
   result.key = key
 
@@ -238,6 +243,7 @@ proc handle(c:Control,m:WireMessage) =
   #if m.msg_type ==
 
 proc receive*(cont:Control) =
+  ## Receive a message on the control socket and handle operations
   let recvdmsg : WireMessage = cont.socket.receive_wire_msg()
   echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
   cont.handle(recvdmsg)

@@ -2,6 +2,7 @@ import private/sockets, private/messaging
 import os,threadpool,zmq
 
 type KernelObj = object
+  ## The kernel object. Contains the sockets.
   hb*: Heartbeat # The heartbeat socket object
   shell*: Shell
   pub*: IOPub
@@ -20,6 +21,10 @@ proc init( connmsg : ConnectionMessage) : Kernel =
 
 proc shutdown(k: Kernel) {.noconv.}=
   echo "[Nimkernel]: Shutting Down"
+  k.hb.socket.close()
+  k.pub.socket.close()
+  k.shell.socket.close()
+  k.control.socket.close()
 
 
 let arguments = commandLineParams() # [0] should always be the connection file
@@ -30,18 +35,12 @@ var connmsg = arguments[0].parseConnMsg()
 
 var kernel :Kernel = connmsg.init()
 
-#addQuitProc( shutdown(kernel) )
+addQuitProc(proc(){.noconv.} = kernel.shutdown() )
 
 spawn kernel.hb.beat()
 
-#proc poll(k:Kernel): bool =
-#  if k.pub.getsockopt(EVENTS) == 3 : return true
-#  elif k.shell.getsockopt(EVENTS) == 3 : return true
-#  else : sleep(100) # wait a bit before trying again
-
 echo "[Nimkernel]: Starting to poll..."
 while true:
-  #echo "[Nimkernel]: Waiting on poll..."
   if kernel.control.socket.getsockopt(EVENTS) == 3 : kernel.control.receive()
   elif kernel.shell.socket.getsockopt(EVENTS) == 3 : kernel.shell.receive()
   elif kernel.pub.socket.getsockopt(EVENTS) == 3 : kernel.pub.receive()

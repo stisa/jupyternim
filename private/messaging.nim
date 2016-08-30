@@ -52,7 +52,6 @@ proc sign*(msg:string,key:string):string =
   result = hmac.hmac_sha256(key,msg).hex.toLower
 
 proc parseConnMsg*(connfile:string):ConnectionMessage =
-  #var connectionfile = connfile.readFile
   let parsedconn = parseFile(connfile)
   result.ip = parsedconn["ip"].str
   result.signature_scheme = parsedconn["signature_scheme"].str
@@ -86,6 +85,7 @@ type WireMessage * = object
   content*: JsonNode
 
 proc receive_wire_msg*(c:TConnection):WireMessage =
+  ## Receive a wire message and decoedes it into a json object,
   var raw : seq[string] = @[]
 #[
   var pre_dicts : string = ""
@@ -137,6 +137,8 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
 proc getISOstr*():string = getDateStr()&'T'&getClockStr()
     
 proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content:JsonNode,key:string) =
+  ## Encode a message following wire spec and sends using the connection specified
+
   var header: JsonNode = %* {
     "msg_id" : uuid.gen(), # typically UUID, must be unique per message
     "username" : "kernel",
@@ -166,6 +168,7 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
   #for r in reply : c.send(r) # send the reply to jupyter 
 
 proc send_wire_msg_no_parent*(c:TConnection, reply_type:string, content:JsonNode,key:string) =
+  ## Encode and sends a message that doesn't have a parent message
   var header: JsonNode = %* {
     "msg_id" : uuid.gen(), # typically UUID, must be unique per message
     "username" : "kernel",
