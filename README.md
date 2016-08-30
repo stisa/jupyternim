@@ -1,3 +1,9 @@
+INim
+-----
+
+This is an experimental nim-only ( well apart from zmq ) version, reimplementing all machinery ( messaging, sockets, execution... ).
+There's a version using python here: [jupyter-nim-kernel](https://github.com/stisa/jupyter-nim-kernel).
+I'm going to port features from there to here ( as time permits ).
 Running: 
 ---------
 - compile the kernel binary: `nim c --threads:on nimkernel.nim`
@@ -18,7 +24,7 @@ State:
 TODO
 ----
 - Shared context. This is currently top/near-top priority. Any help is appreciated. **HARD**
-- Finish implementing messaging ( completion, introspection, display... )
+- Finish implementing messaging ( completion, introspection, history, display... )
 - Make this a nimble package, that automatically installs the kernel. **EASY**
 - Handle shutdown gracefully
 
