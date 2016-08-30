@@ -1,6 +1,8 @@
 import zmq,json, messaging, threadpool
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
+var execcount {.global.} = 0
+
 type Heartbeat* = object
   socket*: TConnection
 
@@ -49,7 +51,7 @@ proc createShell*(ip:string,shellport:BiggestInt,key:string,pub:IOPub): Shell =
 proc handleKernelInfo(s:Shell,m:WireMessage) =
   var content : JsonNode
   spawn s.pub.send("busy") # Tell the client we are busy
-  echo "[Nimkernel]: sending: Kernelinfo sending busy"
+  #echo "[Nimkernel]: sending: Kernelinfo sending busy"
   content = %* {
     "protocol_version": "5.0",
     "ipython_version": [1, 1, 0, ""],
@@ -70,13 +72,42 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
   }
   
   s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
-  echo "[Nimkernel]: sending kernel info reply and idle"
+  #echo "[Nimkernel]: sending kernel info reply and idle"
   spawn s.pub.send("idle") #move to thread
 
 proc handleExecute(shell:Shell,msg:WireMessage) =
+  inc execcount
+  spawn shell.pub.send("busy") #move to thread
   var code = msg.content["code"].str # The code to be executed
-  #discard
-  echo "[NIMKERNEL]: ",code
+    
+  var content = %* {
+      "execution_count": execcount,
+      "code": code,
+  }
+  shell.pub.socket.send_wire_msg( "execute_input", msg, content, shell.key)
+  #######################################################################
+  content = %*{
+      "name": "stdout",
+      "text": code, # code should be the additional output ( compile messages etc)
+  }
+  shell.pub.socket.send_wire_msg( "stream", msg, content, shell.key)
+  #######################################################################
+  content = %*{
+      "execution_count": execcount,
+      "data": {"text/plain": code }, # code should be the result of the request
+      "metadata": {}
+  }
+  shell.pub.socket.send_wire_msg( "execute_result", msg, content, shell.key)
+  #######################################################################
+  let status = "ok" # OR 'error' OR 'abort'
+  content = %* {
+    "status" : status,
+    "execution_count" : execcount,
+    "payload" : {},
+    "user_expressions" : {},
+  }
+  shell.socket.send_wire_msg("execution_reply", msg , content, shell.key)
+  spawn shell.pub.send("idle") #move to thread
   #compiler.execute(code)
 
 proc handle(s:Shell,m:WireMessage) =
