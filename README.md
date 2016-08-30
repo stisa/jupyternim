@@ -20,6 +20,7 @@ TODO
 - Shared context. This is currently top/near-top priority. Any help is appreciated. **HARD**
 - Finish implementing messaging ( completion, introspection, display... )
 - Make this a nimble package, that automatically installs the kernel. **EASY**
+- Handle shutdown gracefully
 
 References
 ----------

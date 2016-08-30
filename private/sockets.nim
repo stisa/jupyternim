@@ -105,31 +105,52 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   
   # clean out empty lines from compilation messages
   var compiler_lines = compiler_out.splitLines()
+
+  var status = "ok" # OR 'error' OR 'abort'
+  var std_type = "stdout"
+  if compiler_out.contains("Error:"):
+    status = "error"
+    std_type = "stderr"  
+  
   compiler_out = "" # clean compile out
   for ln in compiler_lines : 
     if ln!="": compiler_out&= (ln & "\n")
 
-  content = %*{ "name": "stdout", "text": compiler_out }
+  content = %*{ "name": std_type, "text": compiler_out }
   # Send compiler messages
   shell.pub.socket.send_wire_msg( "stream", msg, content, shell.key)
+
+  if status == "error" or status == "abort" :
+    content = %* {
+      "status" : status,
+      "ename" : "Compile error",   # Exception name, as a string
+      "evalue" : "Error",  # Exception value, as a string
+      "traceback" : [], # traceback frames as strings
+    }
+    shell.pub.socket.send_wire_msg( "error", msg, content, shell.key)
+  else:
+    # Send results to frontend
+    let exec_out = execprocess("temp/compiled.out") # the result of the compiled block
+    content = %*{
+        "execution_count": execcount,
+        "data": {"text/plain": exec_out }, # TODO: handle other mimetypes
+        "metadata": {}
+    }
+    shell.pub.socket.send_wire_msg( "execute_result", msg, content, shell.key)
   
-  # Send results to frontend
-  let exec_out = execprocess("temp/compiled.out") # the result of the compiled block
-  content = %*{
-      "execution_count": execcount,
-      "data": {"text/plain": exec_out }, # TODO: handle other mimetypes
-      "metadata": {}
-  }
-  shell.pub.socket.send_wire_msg( "execute_result", msg, content, shell.key)
-  
-  # Tell the frontend execution was ok
-  let status = "ok" # OR 'error' OR 'abort'
-  content = %* {
-    "status" : status,
-    "execution_count" : execcount,
-    "payload" : {},
-    "user_expressions" : {},
-  }
+  # Tell the frontend execution was ok, or not
+  if status == "error" or status == "abort" :
+    content = %* {
+      "status" : status,
+      "execution_count" : execcount,
+    }
+  else:
+    content = %* {
+      "status" : status,
+      "execution_count" : execcount,
+      "payload" : {},
+      "user_expressions" : {},
+    }
   shell.socket.send_wire_msg("execution_reply", msg , content, shell.key)
   
   spawn shell.pub.send_state("idle")
