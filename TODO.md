@@ -1,6 +1,10 @@
 TODO
 -----
 
+- Share context between blocks
+
+Ideas:
+
 Inject a block statement before the code to be executed and a locals 
 after it.
 Save the values returned by locals to a memfile, passing tuples in the 

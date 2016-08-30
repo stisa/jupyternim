@@ -58,9 +58,9 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
   content = %* {
     "protocol_version": "5.0",
     "ipython_version": [1, 1, 0, ""],
-    "language_version": [0, 14, 2],
+    "language_version": [0, 14, 2], # TODO get compiler version from the compiler
     "language": "nim",
-    "implementation": "nimBsd",
+    "implementation": "nimpure",
     "implementation_version": "0.1",
     "language_info": {
       "name": "nim",
