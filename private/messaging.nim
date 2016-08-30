@@ -114,6 +114,7 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
     result.parent_header = parseJson(raw[4])
     result.metadata = parseJson(raw[5])
     result.content = parseJson(raw[6])
+
     if result.header.hasKey("msg_type") : 
       case result.header["msg_type"].str:
       of "kernel_info_request": result.msg_type = WireType.Kernel_Info
@@ -124,7 +125,9 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
       of "history_request": result.msg_type = WireType.History
       of "is_complete_request": result.msg_type = WireType.Complete
       #of "comm_info_request": result.msg_type = WireType.Comm_info <- in spec 5.1
-      of "comm_open": echo "[Nimkernel]: useless msg: comm_open"
+      of "comm_open":
+        result.msg_type = WireType.Unknown
+        echo "[Nimkernel]: useless msg: comm_open"
       else: 
         result.msg_type = WireType.Unknown
         echo "Unknown WireMsg: ", result.header # Dump the header for unknown messages 
