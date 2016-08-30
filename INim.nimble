@@ -8,4 +8,9 @@ license       = "MIT"
 # Dependencies
 
 requires "nim >= 0.14.2"
+requires "zmq"
+requires "hmac"
+requires "nimSHA2"
 
+# Executable
+bin = ["nimkernel"]
