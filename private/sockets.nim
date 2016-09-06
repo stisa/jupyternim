@@ -128,7 +128,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
       "status" : status,
       "ename" : "Compile error",   # Exception name, as a string
       "evalue" : "Error",  # Exception value, as a string
-      "traceback" : [], # traceback frames as strings
+      "traceback" : nil, # traceback frames as strings
     }
     shell.pub.socket.send_wire_msg( "error", msg, content, shell.key)
   else:
