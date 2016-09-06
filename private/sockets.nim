@@ -1,4 +1,4 @@
-import zmq,json, threadpool,os, osproc,strutils
+import zmq,json, threadpool,os, osproc,strutils, sequtils
 import messaging
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
@@ -85,10 +85,10 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   inc execcount
   spawn shell.pub.send_state("busy") #move to thread
 
-  if not existsDir("temp"): createDir("temp") # Ensure temp folder exists 
+  if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
 
   let code = msg.content["code"].str # The code to be executed
-  let srcfile = "temp/block" & $execcount & ".nim"
+  let srcfile = "inimtemp/block" & $execcount & ".nim"
 
   writeFile(srcfile,code) # write the block to a temp ``block[num].nim`` file
  
@@ -104,7 +104,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
-  var compiler_out = execProcess("nim c -o:temp/compiled.out "&srcfile) # compile block
+  var compiler_out = execProcess("nim c -o:inimtemp/compiled.out "&srcfile) # compile block
   
   # clean out empty lines from compilation messages
   var compiler_lines = compiler_out.splitLines()
@@ -133,7 +133,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
     shell.pub.socket.send_wire_msg( "error", msg, content, shell.key)
   else:
     # Send results to frontend
-    let exec_out = execprocess("temp/compiled.out") # the result of the compiled block
+    let exec_out = execprocess("inimtemp/compiled.out") # the result of the compiled block
     content = %*{
         "execution_count": execcount,
         "data": {"text/plain": exec_out }, # TODO: handle other mimetypes
@@ -171,18 +171,95 @@ proc handleIntrospection(shell:Shell,msg:WireMessage) =
   }
   shell.socket.send_wire_msg("inspect_reply", msg , content, shell.key)
 
+
+
+
+proc filter*[T](seq1: openarray[T], pred: proc(item: T): bool {.closure.}): seq[T] {.inline.} =
+  ## Returns a new sequence with all the items that fulfilled the predicate.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let
+  ##     colors = @["red", "yellow", "black"]
+  ##     f1 = filter(colors, proc(x: string): bool = x.len < 6)
+  ##     f2 = filter(colors) do (x: string) -> bool : x.len > 5
+  ##   assert f1 == @["red", "black"]
+  ##   assert f2 == @["yellow"]
+
+  result = newSeq[T]()
+  for i in 0..<seq1.len:
+    if pred(seq1[i]):
+      result.add(seq1[i])
+
 proc handleCompletion(shell:Shell, msg:WireMessage) =
-  let code = msg.content["code"].str
-  let cpos = msg.content["cursor_pos"].num
+  
+  let code : string = msg.content["code"].str
+  let cpos : int = msg.content["cursor_pos"].num.int
+
+  let ws = "\n\r\t "
+  let lf = "\n\r"
+  var sw = cpos
+  while sw > 0 and (not ws.contains(code[sw - 1])):
+      sw -= 1
+  var sl = sw
+  while sl > 0 and (not lf.contains(code[sl - 1])):
+      sl -= 1
+  let wrd = code[sw..cpos]
+
+  var matches : seq[string] = @[] # list of all matches
+
+  # Snippets
+  if "proc".startswith(wrd):
+      matches &= ("proc name(arg:type):returnType = \n    #proc")
+  elif "if".startswith(wrd):
+      matches &= ("if (expression):\n    #then")
+  elif "method".startswith(wrd):
+      matches &= ("method name(arg:type): returnType = \n    #method")
+  elif "iterator".startswith(wrd):
+      matches &= ("iterator name(arg:type): returnType = \n    #iterator")
+  elif "array".startswith(wrd):
+      matches &= ("array[length, type]")
+  elif "seq".startswith(wrd):
+      matches &= ("seq[type]")
+  elif "for".startswith(wrd):
+      matches &= ("for index in iterable):\n  #for loop")
+  elif "while".startswith(wrd):
+      matches &= ("while(condition):\n  #while loop")
+  elif "block".startswith(wrd):
+      matches &= ("block name:\n  #block")
+  elif "case".startswith(wrd):
+      matches &= ("case variable:\nof value:\n  #then\nelse:\n  #else")
+  elif "try".startswith(wrd):
+      matches &= ("try:\n  #something\nexcept exception:\n  #handle exception")
+  elif "template".startswith(wrd):
+      matches &= ("template name (arg:type): returnType =\n  #template")
+  elif "macro".startswith(wrd):
+      matches &= ("macro name (arg:type): returnType =\n  #macro")
+          
+  # Single word matches
+  let single = ["int", "float", "string", "addr", "and", "as", "asm", "atomic", "bind", "break", "cast",
+"concept", "const", "continue", "converter", "defer", "discard", "distinct", "div", "do",
+"elif", "else", "end", "enum", "except", "export", "finally", "for", "from", "func",
+"generic", "import", "in", "include", "interface", "is", "isnot", "let", "mixin", "mod",
+"nil", "not", "notin", "object", "of", "or", "out", "ptr", "raise", "ref", "return", "shl",
+"shr", "static", "tuple", "type", "using", "var", "when", "with", "without", "xor", "yield"]
+
+  #magics = ['#>loadblock ','#>passflag ']
+  
+  # Add all matches to our list
+  matches = matches & ( filter(single) do (x: string) -> bool : x.startsWith(wrd) )
+
   # TODO completion+nimsuggest
+
   var content = %* {
     # The list of all matches to the completion request, such as
     # ['a.isalnum', 'a.isalpha'] for the above example.
-    "matches" : [],
+    "matches" : matches,
     # The range of text that should be replaced by the above matches when a completion is accepted.
     # typically cursor_end is the same as cursor_pos in the request.
-    "cursor_start": 0,
-    "cursor_end" : 1,
+    "cursor_start": sw,
+    "cursor_end" : cpos,
 
     # Information that frontend plugins might use for extra display information about completions.
     "metadata" : {},
@@ -192,6 +269,7 @@ proc handleCompletion(shell:Shell, msg:WireMessage) =
     # in other messages.
     "status" : "ok"
   }
+ # debug msg
   shell.socket.send_wire_msg("complete_reply", msg , content, shell.key)
 
 proc handleHistory(shell:Shell, msg:WireMessage) =
