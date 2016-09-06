@@ -1,4 +1,4 @@
-import json, strutils, zmq,times,uuid, hmac, nimSHA2,md5
+import json, strutils, zmq,times, random, hmac, nimSHA2,md5
 
 type WireType * = enum
   Unknown  = 0
@@ -23,8 +23,7 @@ type ConnectionMessage * = object
   hb_port*,iopub_port*,shell_port*,stdin_port*,control_port*: int
   kernel_name*: string
 
-
-### Nicer zmq ##############################
+## Nicer zmq ##############################
 proc send_multipart(c:TConnection,msglist:seq[string]) =
   ## sends a message over the connection as multipart.
   for i,msg in msglist:
@@ -34,10 +33,10 @@ proc send_multipart(c:TConnection,msglist:seq[string]) =
 
     copyMem(msg_data(m), cstring(msg), msg.len)
     if (i==msglist.len-1):
-      if msg_send(m, c.s, 0) == -1: # 0->Last message, not SNDMORE
+      if msg_send(m, c.s, 0) == -1: # 0=>Last message, not SNDMORE
           zmqError()
     else:
-      if msg_send(m, c.s, 2) == -1: # 2->SNDMORE
+      if msg_send(m, c.s, 2) == -1: # 2=>SNDMORE
         zmqError()
     
 proc getsockopt* [T] (c: TConnection,opt:T) : cint =
@@ -46,8 +45,23 @@ proc getsockopt* [T] (c: TConnection,opt:T) : cint =
   if getsockopt(c.s, opt, addr(result), addr(size)) != 0: zmqError()
 
 ############################################
+template debug*(str:varargs[string, `$`]) =
+  when not defined(release):
+   let inst = instantiationinfo() 
+   echo "["& $inst.filename & ":" & $inst.line & "] ", str.join(" ")
 
-proc sign*(msg:string,key:string):string =
+const validx = [ 'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ]
+const validy = [ '8', '9', '0', 'B' ]
+proc genUUID(nb,upper:bool = true):string =
+  ## Generate a uuid version 4.
+  ## If ``nb`` is false, the uuid is compatible with IPython console.
+  result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+  for c in result.mitems:
+    if c == 'y' : c = random(validy)
+    elif c == 'x': c = random(validx)
+  if not upper: result = result.toLower
+
+proc sign(msg:string,key:string):string =
   ##Sign a message with a secure signature.
   result = hmac.hmac_sha256(key,msg).hex.toLower
 
@@ -62,6 +76,7 @@ proc parseConnMsg*(connfile:string):ConnectionMessage =
   result.stdin_port = parsedconn["stdin_port"].num.int
   result.control_port = parsedconn["control_port"].num.int
   result.kernel_name = parsedconn["kernel_name"].str
+  # transport method??
 
 proc `$`*(cm:ConnectionMessage):string=
   result = "ip: "& cm.ip &
@@ -87,27 +102,17 @@ type WireMessage * = object
 proc receive_wire_msg*(c:TConnection):WireMessage =
   ## Receive a wire message and decoedes it into a json object,
   var raw : seq[string] = @[]
-#[
-  var pre_dicts : string = ""
-  while predicts.find("<IDS|MSG>")== -1:
-    let rc = c.receive()
-    if rc!=nil:
-      echo "received: ", rc
-      pre_dicts &= rc # Is it even possible to receive empty strings?
-  raw.add(predicts[0..^9])
-  raw.add(predicts[^9..pre_dicts.high()])
 
-  echo raw[0],"---",raw[1]
-]#
-  while raw.len<7:
+  while raw.len<7: # TODO: move to a receive_multipart?
     let rc = c.receive()
-    if rc != "":
-      raw&=rc
+    if rc != "": raw&=rc
 
   result.ident = raw[0]
+
   if( raw[1]!="<IDS|MSG>"): 
-    echo "[Nimkernel]:proc receive wire msg: Malformed message?? Follows:"
-    echo "[Nimkernel]: ",raw
+    debug "proc receive wire msg: Malformed message?? Follows:"
+    debug raw
+  
   else :
     result.signature = raw[2]
     result.header = parseJson(raw[3])
@@ -127,22 +132,22 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
       #of "comm_info_request": result.msg_type = WireType.Comm_info <- in spec 5.1
       of "comm_open":
         result.msg_type = WireType.Unknown
-        echo "[Nimkernel]: useless msg: comm_open"
+        debug "unused msg: comm_open"
       else: 
         result.msg_type = WireType.Unknown
-        echo "Unknown WireMsg: ", result.header # Dump the header for unknown messages 
+        debug "Unknown WireMsg: ", result.header # Dump the header for unknown messages 
     else:
-      echo "NO WIRE MESSAGE TYPE???????????????"
+      debug "NO WIRE MESSAGE TYPE???????????????"
 
-proc getISOstr*():string = getDateStr()&'T'&getClockStr()
+proc getISOstr():string = getDateStr()&'T'&getClockStr()
     
 proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content:JsonNode,key:string) =
   ## Encode a message following wire spec and sends using the connection specified
 
   var header: JsonNode = %* {
-    "msg_id" : uuid.gen(), # typically UUID, must be unique per message
+    "msg_id" : genUUID(), # typically UUID, must be unique per message
     "username" : "kernel",
-    "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK. parent.header["session"], # typically UUID, should be unique per session
+    "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK?
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
     "msg_type" : reply_type,
     "version" : "5.0", # the message protocol version
@@ -154,8 +159,6 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
   
   reply &= "<IDS|MSG>" # add separator
   
-  # TODO look were status goes
-  
   let secondpartreply = $header & $parent.header & $metadata & $content
   reply &= sign(secondpartreply,key) # add signature TODO
   reply &= $header 
@@ -164,13 +167,10 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
   reply &= $content
    
   c.send_multipart(reply)
-  #echo "[Nimkernel]: sent\n"& $reply[3]
-  #for r in reply : c.send(r) # send the reply to jupyter 
-
 proc send_wire_msg_no_parent*(c:TConnection, reply_type:string, content:JsonNode,key:string) =
   ## Encode and sends a message that doesn't have a parent message
   var header: JsonNode = %* {
-    "msg_id" : uuid.gen(), # typically UUID, must be unique per message
+    "msg_id" : genUUID(), # typically UUID, must be unique per message
     "username" : "kernel",
     "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK. parent.header["session"], # typically UUID, should be unique per session
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
@@ -191,7 +191,3 @@ proc send_wire_msg_no_parent*(c:TConnection, reply_type:string, content:JsonNode
   reply &= $content
 
   c.send_multipart(reply)
-  #echo "[Nimkernel]: sent\n"& $reply[3]
-  #var rr : string = ""
-  #for r in reply: rr&=r # send the reply to jupyter, multi part 
-  #c.send(rr)

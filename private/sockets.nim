@@ -27,7 +27,7 @@ proc beat*(hb:Heartbeat) =
   ## Execute the heartbeat loop.
   ## Usually ``spawn``ed to avoid killing the kernel
   ## when it's busy
-  echo "[Nimkernel]: starting hb loop..."
+  debug "starting hb loop..."
   while true:
     var s = hb.socket.receive() # Read from socket
     if s!=nil: 
@@ -45,7 +45,7 @@ proc send_state(pub:IOPub,state:string,) {.inline.}=
 proc receive*(pub:IOPub) =
   ## Receive a message on the IOPub socket
   let recvdmsg : WireMessage = pub.socket.receive_wire_msg()
-  echo "[Nimkernel]: pub received:\n", $recvdmsg
+  debug "pub received:\n", $recvdmsg
   
 proc createShell*(ip:string,shellport:BiggestInt,key:string,pub:IOPub): Shell =
   ## Create a shell socket
@@ -57,7 +57,7 @@ proc createShell*(ip:string,shellport:BiggestInt,key:string,pub:IOPub): Shell =
 proc handleKernelInfo(s:Shell,m:WireMessage) =
   var content : JsonNode
   spawn s.pub.send_state("busy") # Tell the client we are busy
-  #echo "[Nimkernel]: sending: Kernelinfo sending busy"
+  #echo "sending: Kernelinfo sending busy"
   content = %* {
     "protocol_version": "5.0",
     "ipython_version": [1, 1, 0, ""],
@@ -78,7 +78,7 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
   }
   
   s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
-  #echo "[Nimkernel]: sending kernel info reply and idle"
+  #echo "sending kernel info reply and idle"
   spawn s.pub.send_state("idle") #move to thread
 
 proc handleExecute(shell:Shell,msg:WireMessage) =
@@ -195,7 +195,7 @@ proc handleCompletion(shell:Shell, msg:WireMessage) =
   shell.socket.send_wire_msg("complete_reply", msg , content, shell.key)
 
 proc handleHistory(shell:Shell, msg:WireMessage) =
-  echo "[Nimkernel]: Unhandled history"
+  debug "Unhandled history"
   var content = %* {
     # A list of 3 tuples, either:
     # (session, line_number, input) or
@@ -211,18 +211,18 @@ proc handle(s:Shell,m:WireMessage) =
     handleExecute(s,m)
   elif m.msg_type == Shutdown :
     # TODO quit
-    echo "[Nimkernel]: kernel wants to shutdown"
+    debug "kernel wants to shutdown"
   elif m.msg_type == Introspection : handleIntrospection(s,m)
   elif m.msg_type == Completion : handleCompletion(s,m)
   elif m.msg_type == History : handleHistory(s,m)
   elif m.msg_type == Complete : discard # TODO
   else:
-    echo "[Nimkernel]: unhandled message: ", m.msg_type
+    debug "unhandled message: ", m.msg_type
 
 proc receive*(shell:Shell) =
   ## Receive a message on the shell socket, decode it and handle operations
   let recvdmsg : WireMessage = shell.socket.receive_wire_msg()
-  echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
+  debug "sending: ", $recvdmsg.msg_type
   shell.handle(recvdmsg)
 
 type Control* = object
@@ -237,7 +237,7 @@ proc createControl*(ip:string,port:BiggestInt,key:string): Control =
 proc handle(c:Control,m:WireMessage) =
   if m.msg_type == Shutdown:
     var content : JsonNode
-    echo "[Nimkernel] shutdown requested"
+    debug "shutdown requested"
     content = %* { "restart": false }    
     c.socket.send_wire_msg("shutdown_reply", m , content, c.key)
   #if m.msg_type ==
@@ -245,5 +245,5 @@ proc handle(c:Control,m:WireMessage) =
 proc receive*(cont:Control) =
   ## Receive a message on the control socket and handle operations
   let recvdmsg : WireMessage = cont.socket.receive_wire_msg()
-  echo "[Nimkernel]: sending: ", $recvdmsg.msg_type
+  debug "received: ", $recvdmsg.msg_type
   cont.handle(recvdmsg)

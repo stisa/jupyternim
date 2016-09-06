@@ -1,5 +1,5 @@
 {
- "argv": ["C:\\Users\\silvio\\Documents\\Dev\\nim\\jupyter-kernel\\nimupyter\\nimkernel",  "{connection_file}"],
+ "argv": ["C:\\Users\\silvio\\Documents\\Dev\\nim\\jupyter-kernel\\inim\\nimkernel",  "{connection_file}"],
   "display_name": "nim - pure",
   "language": "nim",
   "file_extension": ".nim"

@@ -11,7 +11,7 @@ type KernelObj = object
 type Kernel = ref KernelObj
 
 proc init( connmsg : ConnectionMessage) : Kernel =
-  echo "[Nimkernel]: Initing"
+  debug "Initing"
   new result
   result.hb = createHB(connmsg.ip,connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub( connmsg.ip, connmsg.iopub_port, connmsg.key ) # Initialize iopub 
@@ -20,7 +20,7 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   #result.pollitems
 
 proc shutdown(k: Kernel) {.noconv.}=
-  echo "[Nimkernel]: Shutting Down"
+  debug "Shutting Down"
   k.hb.socket.close()
   k.pub.socket.close()
   k.shell.socket.close()
@@ -29,7 +29,7 @@ proc shutdown(k: Kernel) {.noconv.}=
 
 let arguments = commandLineParams() # [0] should always be the connection file
 
-assert(arguments.len>=1, "[Nimkernel]: Something went wrong, no file passed to kernel?")
+assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
 
 var connmsg = arguments[0].parseConnMsg()
 
@@ -39,7 +39,7 @@ addQuitProc(proc(){.noconv.} = kernel.shutdown() )
 
 spawn kernel.hb.beat()
 
-echo "[Nimkernel]: Starting to poll..."
+debug "Starting to poll..."
 while true:
   if kernel.control.socket.getsockopt(EVENTS) == 3 : kernel.control.receive()
   elif kernel.shell.socket.getsockopt(EVENTS) == 3 : kernel.shell.receive()
