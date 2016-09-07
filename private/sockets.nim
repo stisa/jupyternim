@@ -159,10 +159,19 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   spawn shell.pub.send_state("idle")
   #compiler.execute(code)
 
+proc parseNimsuggest(nims:string):tuple[found:bool,data:JsonNode] =
+  # nimsuggest output is \t separated
+  # http://nim-lang.org/docs/nimsuggest.html#parsing-nimsuggest-output
+  discard
+
 proc handleIntrospection(shell:Shell,msg:WireMessage) =
   let code = msg.content["code"].str
-  let cpos = msg.content["cursor_pos"].num
-  # TODO ask nimsuggest about the code
+  let cpos = msg.content["cursor_pos"].num.int
+  if code[cpos] == '.' :
+    discard # make a call to sug in nimsuggest sug <file> <line>:<pos>
+  elif code[cpos] == '(':
+    discard # make a call to con in nimsuggest con <file> <line>:<pos>
+  # TODO: ask nimsuggest about the code
   var content = %* {
     "status" : "ok", #or "error"
     "found" : false, # found should be true if an object was found, false otherwise
@@ -171,22 +180,9 @@ proc handleIntrospection(shell:Shell,msg:WireMessage) =
   }
   shell.socket.send_wire_msg("inspect_reply", msg , content, shell.key)
 
-
-
-
 proc filter*[T](seq1: openarray[T], pred: proc(item: T): bool {.closure.}): seq[T] {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   let
-  ##     colors = @["red", "yellow", "black"]
-  ##     f1 = filter(colors, proc(x: string): bool = x.len < 6)
-  ##     f2 = filter(colors) do (x: string) -> bool : x.len > 5
-  ##   assert f1 == @["red", "black"]
-  ##   assert f2 == @["yellow"]
-
+  ## Copied from sequtils, modified to work with openarray
   result = newSeq[T]()
   for i in 0..<seq1.len:
     if pred(seq1[i]):
@@ -239,11 +235,11 @@ proc handleCompletion(shell:Shell, msg:WireMessage) =
           
   # Single word matches
   let single = ["int", "float", "string", "addr", "and", "as", "asm", "atomic", "bind", "break", "cast",
-"concept", "const", "continue", "converter", "defer", "discard", "distinct", "div", "do",
-"elif", "else", "end", "enum", "except", "export", "finally", "for", "from", "func",
-"generic", "import", "in", "include", "interface", "is", "isnot", "let", "mixin", "mod",
-"nil", "not", "notin", "object", "of", "or", "out", "ptr", "raise", "ref", "return", "shl",
-"shr", "static", "tuple", "type", "using", "var", "when", "with", "without", "xor", "yield"]
+                "concept", "const", "continue", "converter", "defer", "discard", "distinct", "div", "do",
+                "elif", "else", "end", "enum", "except", "export", "finally", "for", "from", "func",
+                "generic", "import", "in", "include", "interface", "is", "isnot", "let", "mixin", "mod",
+                "nil", "not", "notin", "object", "of", "or", "out", "ptr", "raise", "ref", "return", "shl",
+                "shr", "static", "tuple", "type", "using", "var", "when", "with", "without", "xor", "yield"]
 
   #magics = ['#>loadblock ','#>passflag ']
   
@@ -253,8 +249,7 @@ proc handleCompletion(shell:Shell, msg:WireMessage) =
   # TODO completion+nimsuggest
 
   var content = %* {
-    # The list of all matches to the completion request, such as
-    # ['a.isalnum', 'a.isalpha'] for the above example.
+    # The list of all matches to the completion request
     "matches" : matches,
     # The range of text that should be replaced by the above matches when a completion is accepted.
     # typically cursor_end is the same as cursor_pos in the request.
@@ -266,7 +261,7 @@ proc handleCompletion(shell:Shell, msg:WireMessage) =
 
     # status should be 'ok' unless an exception was raised during the request,
     # in which case it should be 'error', along with the usual error message content
-    # in other messages.
+    # in other messages. Currently assuming it won't error.
     "status" : "ok"
   }
  # debug msg

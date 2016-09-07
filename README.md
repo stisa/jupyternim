@@ -25,8 +25,9 @@ TODO
 ----
 - Shared context. This is currently top/near-top priority. Any help is appreciated. **HARD**
 - Finish implementing messaging ( completion, introspection, history, display... )
-- Make this a nimble package, that automatically installs the kernel. **EASY**
+- Make this a nimble package, that automatically installs the kernel. **EASY**, needs patching nimble?
 - Handle shutdown gracefully
+- Connect to nimsuggest via socket, parse its output for introspection requests
 
 References
 ----------
