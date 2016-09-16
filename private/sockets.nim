@@ -1,4 +1,4 @@
-import zmq,json, threadpool,os, osproc,strutils, sequtils
+import zmq,json, threadpool,os, osproc,strutils, sequtils, base64
 import messaging
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
@@ -81,6 +81,15 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
   #echo "sending kernel info reply and idle"
   spawn s.pub.send_state("idle") #move to thread
 
+const inlineplot = r"""
+import graph,os
+template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, scale:float=100,yscale:float=100, bgColor:Color = White) =
+  let srf = drawXY(x,y,lncolor, mode, scale,yscale, bgColor)
+  let pathto = currentSourcePath().changeFileExt(".png")
+  srf.saveSurfaceTo(pathto)
+  
+"""
+
 proc handleExecute(shell:Shell,msg:WireMessage) =
   inc execcount
   spawn shell.pub.send_state("busy") #move to thread
@@ -88,10 +97,14 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
 
   let code = msg.content["code"].str # The code to be executed
+  
+  let hasPlot = if code.contains("plot("): true else: false # Tell the kernel we have a plot to display 
+  
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
-  writeFile(srcfile,code) # write the block to a temp ``block[num].nim`` file
- 
+  if hasPlot: writeFile(srcfile,inlineplot&code) # write the block to a temp ``block[num].nim`` file
+  else: writeFile(srcfile,code) # write the block to a temp ``block[num].nim`` file
+  
   # create a temp dir where the kernel executable stores blocks
   # will be removed on exit ?
 
@@ -106,20 +119,22 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   # TODO: handle flags
   var compiler_out = execProcess("nim c -o:inimtemp/compiled.out "&srcfile) # compile block
   
-  # clean out empty lines from compilation messages
-  var compiler_lines = compiler_out.splitLines()
 
   var status = "ok" # OR 'error' OR 'abort'
   var std_type = "stdout"
   if compiler_out.contains("Error:"):
     status = "error"
     std_type = "stderr"  
+
+  # clean out empty lines from compilation messages
+  var compiler_lines = compiler_out.splitLines()
   
-  compiler_out = "" # clean compile out
+  compiler_out = ""
   for ln in compiler_lines : 
     if ln!="": compiler_out&= (ln & "\n")
 
   content = %*{ "name": std_type, "text": compiler_out }
+  
   # Send compiler messages
   shell.pub.socket.send_wire_msg( "stream", msg, content, shell.key)
 
@@ -133,14 +148,25 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
     shell.pub.socket.send_wire_msg( "error", msg, content, shell.key)
   else:
     # Send results to frontend
-    let exec_out = execprocess("inimtemp/compiled.out") # the result of the compiled block
+    let exec_out = execprocess("inimtemp/compiled.out") # execute compiled block
+
+    let plotfile = "inimtemp/block" & $execcount & ".png"
+    if hasPlot and existsFile(plotfile):
+      let plotdata = readFile(plotfile)
+      content = %*{
+          "data": {"image/png": encode(plotdata) }, # TODO: handle other mimetypes
+          "metadata": nil
+      }
+      shell.pub.socket.send_wire_msg( "display_data", msg, content, shell.key)
+    elif existsFile(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
+
     content = %*{
         "execution_count": execcount,
         "data": {"text/plain": exec_out }, # TODO: handle other mimetypes
-        "metadata": {}
+        "metadata": nil
     }
     shell.pub.socket.send_wire_msg( "execute_result", msg, content, shell.key)
-  
+    
   # Tell the frontend execution was ok, or not
   if status == "error" or status == "abort" :
     content = %* {
