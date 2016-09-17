@@ -7,7 +7,7 @@ I'm going to port features from there to here ( as time permits ).
 Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`  
 The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting libs may be considered, and as always, PRs are welcome!  
   
-Look at [example-notebook](https://github.com/stisa/inim/blob/master/example-notebook.ipynb) for some examples.  
+Look at [example-notebook](https://github.com/stisa/INim/blob/master/examples/example-notebook.ipynb) for some examples.  
 
 Prereqs
 -------
