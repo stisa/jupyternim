@@ -92,21 +92,30 @@ template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, sca
 
 proc handleExecute(shell:Shell,msg:WireMessage) =
   inc execcount
+  
   spawn shell.pub.send_state("busy") #move to thread
 
+  # should be removed on exit ?
   if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
 
   let code = msg.content["code"].str # The code to be executed
   
-  let hasPlot = if code.contains("plot("): true else: false # Tell the kernel we have a plot to display 
-  
+  let hasPlot = if code.contains("#>inlineplot"): true else: false # Tell the kernel we have a plot to display 
+  var ploth = 480
+  var plotw = 640
+  if hasPlot:
+    let plotstart = code.find("#>inlineplot")+"#>inlineplot".len+1
+    let defplot = code[plotstart..plotstart+10].split()
+    if defplot[0].parseInt > 0 :
+      plotw = defplot[0].parseInt
+      ploth = defplot[1].parseInt
+
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
   if hasPlot: writeFile(srcfile,inlineplot&code) # write the block to a temp ``block[num].nim`` file
   else: writeFile(srcfile,code) # write the block to a temp ``block[num].nim`` file
   
-  # create a temp dir where the kernel executable stores blocks
-  # will be removed on exit ?
+  
 
   # Send via iopub the block about to be executed
   var content = %* {
@@ -155,7 +164,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
       let plotdata = readFile(plotfile)
       content = %*{
           "data": {"image/png": encode(plotdata) }, # TODO: handle other mimetypes
-          "metadata": nil
+          "metadata": %*{ "image/png" : { "width": plotw, "height": ploth } }
       }
       shell.pub.socket.send_wire_msg( "display_data", msg, content, shell.key)
     elif existsFile(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
@@ -163,7 +172,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
     content = %*{
         "execution_count": execcount,
         "data": {"text/plain": exec_out }, # TODO: handle other mimetypes
-        "metadata": nil
+        "metadata": "{}"
     }
     shell.pub.socket.send_wire_msg( "execute_result", msg, content, shell.key)
     

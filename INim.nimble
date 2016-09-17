@@ -12,12 +12,9 @@ requires "zmq"
 requires "hmac"
 requires "nimSHA2"
 
-## Post install setup
-#postinstall:
-#  exec "nim c --threads:on -d:release nimkernel.nim" # compile the kernel
+# Optional: graph
 
-#  write the spec... 
-
+##  Write the spec... 
 #  writeFile("nim-spec/kernel.json", r"""{
 # "argv": ["<nimbledir>\inim\\nimkernel",  "{connection_file}"],
 #  "display_name": "nim - pure",
@@ -25,5 +22,7 @@ requires "nimSHA2"
 #  "file_extension": ".nim"
 #}""")
 
-#  exec "jupyter-kernelspec install nim-spec" # install the spec
-#  setCommand("nop")
+task setup, "Setup the Kernel":
+  exec(r"nim c --threads:on nimkernel.nim") # compile kernel
+  exec(r"jupyter-kernelspec install nim-spec") # install the spec
+  setCommand("nop")
