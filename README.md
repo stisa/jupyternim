@@ -1,13 +1,13 @@
 INim
 -----
 
-This is an experimental nim-only ( well apart from zmq ) version, reimplementing all machinery ( messaging, sockets, execution... ).
-There's a version using python here: [jupyter-nim-kernel](https://github.com/stisa/jupyter-nim-kernel).
-I'm going to port features from there to here ( as time permits ).
-Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`
-The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting libs may be considered, and as always, PRs are welcome!
-
-Look at [example-notebook](https://github.com/stisa/inim/blob/master/example-notebook.ipynb) for some examples.
+This is an experimental nim-only ( well apart from zmq ) version, reimplementing all machinery ( messaging, sockets, execution... ).  
+There's a version using python here: [jupyter-nim-kernel](https://github.com/stisa/jupyter-nim-kernel).  
+I'm going to port features from there to here ( as time permits ).  
+Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`  
+The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting libs may be considered, and as always, PRs are welcome!  
+  
+Look at [example-notebook](https://github.com/stisa/inim/blob/master/example-notebook.ipynb) for some examples.  
 
 Prereqs
 -------
