@@ -6,3 +6,5 @@ refzmq.nim
 fzmq.nim
 *.exe
 nimsuggest.log
+inimtemp
+.ipynb_checkpoints
