@@ -32,11 +32,12 @@ State:
 - Compiles and runs code.
 - Compiler output and results are shown.
 - Basic 2d plotting  
-- **Still no shared context**.
+- **Context partially shared**.
 
 TODO
 ----
 - Shared context. This is currently top/near-top priority. Any help is appreciated. **HARD**
+  Context is shared between block `n` and `n-1`
 - Finish implementing messaging ( completion, introspection, history, display... )
 - Make this a nimble package, that automatically installs the kernel. **MEDIUM**, needs patching nimble?
 - Handle shutdown gracefully
