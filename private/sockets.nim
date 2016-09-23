@@ -90,6 +90,49 @@ template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, sca
   
 """
 
+## Ugly way of injecting
+proc injectInclude*(blocknum:int):string = 
+  if blocknum>0: result = "\ninclude imports"& $blocknum & "\n"
+  else: result=""
+
+proc injectExporter*(blocknum:int):string = """
+
+when isMainModule:
+  import macros,strutils,sequtils, ospaths
+
+  static:
+    proc findExported(lib:string):seq[tuple[nproc,lib:string]] =
+      ## Probably the slowest way to do this, but it's just a Proof of Concept
+      let code = readFile(lib).parseStmt().treerepr.splitLines().map() do (x:string)->string:
+        strip(x)
+      result = newSeq[tuple[nproc,lib:string]]()
+      for i in 0..<code.len:
+        if code[i]=="Postfix":
+          let initident = code[i+2].find("Ident !\"")+8
+          let endident = code[i+2].find("\"",initident)-1
+          result&= (code[i+2][initident..endident], lib.splitFile().name)
+  
+    proc genImportsFile() =
+      var imports = ""
+      let exported = findExported(currentSourcePath())
+      for e in exported: imports&="from "&e.lib&" import "&e.nproc&"\n"
+      writeFile("inimtemp/imports" & $"""& $blocknum & """ & ".nim",imports&"\n")
+    
+    genImportsFile() 
+  
+  proc wrapEchos(){.noconv.}=
+    ## Wrap top level echos in isMainModule
+    let code = readFile(currentSourcePath())
+    var outcode = ""
+    for ln in code.splitLines:
+      if ln.startsWith("echo"): outcode &= ln.replace("echo","when isMainModule:\n  echo")&"\n"
+      else: outcode &= ln&"\n"
+    writeFile(currentSourcePath(),outcode)
+
+  addQuitProc(wrapEchos)
+"""
+
+
 proc handleExecute(shell:Shell,msg:WireMessage) =
   inc execcount
   
@@ -112,8 +155,8 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
-  if hasPlot: writeFile(srcfile,inlineplot&code) # write the block to a temp ``block[num].nim`` file
-  else: writeFile(srcfile,code) # write the block to a temp ``block[num].nim`` file
+  if hasPlot: writeFile(srcfile,inlineplot&injectInclude(execcount-1)&code&injectExporter(execcount)) # write the block to a temp ``block[num].nim`` file
+  else: writeFile(srcfile,injectInclude(execcount-1)&code&injectExporter(execcount)) # write the block to a temp ``block[num].nim`` file
   
   
 
@@ -126,7 +169,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
-  var compiler_out = execProcess("nim c -o:inimtemp/compiled.out "&srcfile) # compile block
+  var compiler_out = execProcess("nim c --hints:off -o:inimtemp/compiled.out "&srcfile) # compile block
   
 
   var status = "ok" # OR 'error' OR 'abort'
