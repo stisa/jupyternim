@@ -92,68 +92,13 @@ template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, sca
 
 ## Ugly way of injecting
 proc injectInclude*(blocknum:int):string = 
-  if blocknum>0: result = """
-
-include imports"""& $blocknum & """
-
-
-when isMainModule:
-  import macros,strutils,sequtils, os
-
-  proc reExport(){.noconv.}=
-    var rexp = ""
-    var reimp = ""
-    if existsFile("inimtemp/imports"""& $blocknum & """.nim"):
-      let inexp = readFile("inimtemp/imports"""& $blocknum & """.nim").replace("from ","").replace(" import "," ")
-      for ln in inexp.splitLines:
-        let libproc = ln.split()
-        if libproc.len==2: rexp &= "\nexport " & libproc[0]&"."&libproc[1]
-        else: echo libproc
-    ## the imports of current is already created here, as it's done at compile and this is at run
-    var fs = open("inimtemp/imports"""& $(blocknum) & """.nim",fmAppend)
-    fs.write(rexp)
-    fs.close()
-    
-    var fs2 = open("inimtemp/imports"""& $(blocknum+1) & """.nim",fmAppend)
-    fs2.write(rexp)
-    fs2.close()
-  addQuitProc(reExport)
-
-"""
+  if blocknum>0: result = "include imports \n"
   else: result=""
 
-proc injectExporter*(blocknum:int):string = """
+proc exportWrapper*(blocknum:int=0):string = """
 
 when isMainModule:
-  import macros,strutils,sequtils, os
-
-  static:
-    proc findExported(lib:string):seq[tuple[nproc,lib:string]] =
-      ## Probably the slowest way to do this, but it's just a Proof of Concept
-      let code = readFile(lib).parseStmt().treerepr.splitLines().map() do (x:string)->string:
-        strip(x)
-      result = newSeq[tuple[nproc,lib:string]]()
-      for i in 0..<code.len:
-        if code[i]=="Postfix":
-          let initident = code[i+2].find("Ident !\"")+8
-          let endident = code[i+2].find("\"",initident)-1
-          result&= (code[i+2][initident..endident], lib.splitFile().name)
-        elif code[i]=="ExportStmt":
-          let initident = code[i+2].find("Ident !\"")+8
-          let endident = code[i+2].find("\"",initident)-1
-          let initident2 = code[i+3].find("Ident !\"")+8
-          let endident2 = code[i+3].find("\"",initident2)-1
-          result&= (code[i+2][initident..endident],code[i+3][initident2..endident2])
-
-    proc genImportsFile() =
-      var imports = ""
-      let exported = findExported(currentSourcePath())
-      echo exported
-      for e in exported: imports&="from "&e.lib&" import "&e.nproc&"\n"
-      writeFile("inimtemp/imports" & $"""& $blocknum & """ & ".nim",imports&"\n")
-    
-    genImportsFile() 
-  
+  import strutils,sequtils, os
   proc wrapEchos(){.noconv.}=
     ## Wrap top level echos in isMainModule
     let code = readFile(currentSourcePath())
@@ -162,9 +107,19 @@ when isMainModule:
       if ln.startsWith("echo"): outcode &= ln.replace("echo","when isMainModule:\n  echo")&"\n"
       else: outcode &= ln&"\n"
     writeFile(currentSourcePath(),outcode)
+  
+  proc appendExport(){.noconv.}=
+    if fileExists("inimtemp/imports.nim"):
+      var fs = open("inimtemp/imports.nim",fmAppend)
+      fs.write("import "&currentSourcePath().extractFilename().changeFileExt("")&"\n")
+    else: writeFile("inimtemp/imports.nim", "import "&currentSourcePath().extractFilename().changeFileExt("")&"\n" )
 
+  addQuitProc(appendExport)
   addQuitProc(wrapEchos)
+
 """
+
+var last_sucess_block: int = 0 # This variable maintains the last succesfully compiled block in this session.
 
 
 proc handleExecute(shell:Shell,msg:WireMessage) =
@@ -189,8 +144,8 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
-  if hasPlot: writeFile(srcfile,inlineplot&injectInclude(execcount-1)&code&injectExporter(execcount)) # write the block to a temp ``block[num].nim`` file
-  else: writeFile(srcfile,injectInclude(execcount-1)&code&injectExporter(execcount)) # write the block to a temp ``block[num].nim`` file
+  if hasPlot: writeFile(srcfile,inlineplot&injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
+  else: writeFile(srcfile,injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
   
   
 
@@ -210,7 +165,8 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   var std_type = "stdout"
   if compiler_out.contains("Error:"):
     status = "error"
-    std_type = "stderr"  
+    std_type = "stderr" 
+  else: last_sucess_block = execcount # This block compiled succesfully
 
   # clean out empty lines from compilation messages
   var compiler_lines = compiler_out.splitLines()
