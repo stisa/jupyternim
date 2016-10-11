@@ -13,6 +13,8 @@ Prereqs
 -------
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
 - a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
+- a zeromq installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.0.4 . It must be in PATH or the kernel won't run.
+- **OPTIONAL** My toy [Graph lib](https://github.com/stisa/graph). I will add it to nimble when I flesh it out more.
 
 Running: 
 ---------
@@ -25,7 +27,7 @@ Running:
 As an alternative, in [nim-spec/kernel.json](https://github.com/stisa/jupyter-nim-kernel/blob/nim-based/nim-spec/kernel.json) change 
 `"C:\\<blah>\\nimkernel"` to the **full** path of `nimkernel` executable and then run `nimble setup`
 
-Note that ZeroMQ is dinamically linked, so it needs to be installed and added to path  
+Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically linked, so it needs to be installed and added to path  
 
 State:
 ------
