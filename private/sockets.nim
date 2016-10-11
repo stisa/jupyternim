@@ -92,13 +92,40 @@ template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, sca
 
 ## Ugly way of injecting
 proc injectInclude*(blocknum:int):string = 
-  if blocknum>0: result = "\ninclude imports"& $blocknum & "\n"
+  if blocknum>0: result = """
+
+include imports"""& $blocknum & """
+
+
+when isMainModule:
+  import macros,strutils,sequtils, os
+
+  proc reExport(){.noconv.}=
+    var rexp = ""
+    var reimp = ""
+    if existsFile("inimtemp/imports"""& $blocknum & """.nim"):
+      let inexp = readFile("inimtemp/imports"""& $blocknum & """.nim").replace("from ","").replace(" import "," ")
+      for ln in inexp.splitLines:
+        let libproc = ln.split()
+        if libproc.len==2: rexp &= "\nexport " & libproc[0]&"."&libproc[1]
+        else: echo libproc
+    ## the imports of current is already created here, as it's done at compile and this is at run
+    var fs = open("inimtemp/imports"""& $(blocknum) & """.nim",fmAppend)
+    fs.write(rexp)
+    fs.close()
+    
+    var fs2 = open("inimtemp/imports"""& $(blocknum+1) & """.nim",fmAppend)
+    fs2.write(rexp)
+    fs2.close()
+  addQuitProc(reExport)
+
+"""
   else: result=""
 
 proc injectExporter*(blocknum:int):string = """
 
 when isMainModule:
-  import macros,strutils,sequtils, ospaths
+  import macros,strutils,sequtils, os
 
   static:
     proc findExported(lib:string):seq[tuple[nproc,lib:string]] =
@@ -111,10 +138,17 @@ when isMainModule:
           let initident = code[i+2].find("Ident !\"")+8
           let endident = code[i+2].find("\"",initident)-1
           result&= (code[i+2][initident..endident], lib.splitFile().name)
-  
+        elif code[i]=="ExportStmt":
+          let initident = code[i+2].find("Ident !\"")+8
+          let endident = code[i+2].find("\"",initident)-1
+          let initident2 = code[i+3].find("Ident !\"")+8
+          let endident2 = code[i+3].find("\"",initident2)-1
+          result&= (code[i+2][initident..endident],code[i+3][initident2..endident2])
+
     proc genImportsFile() =
       var imports = ""
       let exported = findExported(currentSourcePath())
+      echo exported
       for e in exported: imports&="from "&e.lib&" import "&e.nproc&"\n"
       writeFile("inimtemp/imports" & $"""& $blocknum & """ & ".nim",imports&"\n")
     
@@ -210,7 +244,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
           "metadata": %*{ "image/png" : { "width": plotw, "height": ploth } }
       }
       shell.pub.socket.send_wire_msg( "display_data", msg, content, shell.key)
-    elif existsFile(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
+    elif hasPlot and existsFile(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
 
     content = %*{
         "execution_count": execcount,
