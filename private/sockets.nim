@@ -83,7 +83,7 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
 
 const inlineplot = r"""
 import graph,os
-template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, scale:float=100,yscale:float=100, bgColor:Color = White) =
+template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, scale:float=1,yscale:float=1, bgColor:Color = White) =
   let srf = drawXY(x,y,lncolor, mode, scale,yscale, bgColor)
   let pathto = currentSourcePath().changeFileExt(".png")
   srf.saveSurfaceTo(pathto)

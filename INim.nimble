@@ -26,3 +26,6 @@ task setup, "Setup the Kernel":
   exec(r"nim c --threads:on nimkernel.nim") # compile kernel
   exec(r"jupyter-kernelspec install nim-spec") # install the spec
   setCommand("nop")
+
+task buildkernel, "Build the Kernel":
+  exec(r"nim c --threads:on nimkernel.nim") # compile kernel
