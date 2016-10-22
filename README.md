@@ -18,14 +18,21 @@ Prereqs
 
 Running: 
 ---------
+The kernel should be automatically compiled and registered with jupyter just by doing `nimble install inim`
+
+Alternatively, try one of the following:
+
 - compile the kernel binary: `nim c --threads:on nimkernel.nim`
 - in [nim-spec/kernel.json](https://github.com/stisa/jupyter-nim-kernel/blob/nim-based/nim-spec/kernel.json) change 
 `"C:\\<blah>\\nimkernel"` to the path of `nimkernel` executable
-- add kernel spec to jupyter : `jupyter-kernelspec install nim-spec`
-- run `jupyter-notebook` and select `new>nim - pure` 
+- add kernel spec to jupyter : `jupyter-kernelspec install nim-spec --user`
+- run `jupyter-notebook` and select `new>Nim` 
 
-As an alternative, in [nim-spec/kernel.json](https://github.com/stisa/jupyter-nim-kernel/blob/nim-based/nim-spec/kernel.json) change 
-`"C:\\<blah>\\nimkernel"` to the **full** path of `nimkernel` executable and then run `nimble setup`
+or
+
+- in [nim-spec/kernel.json](https://github.com/stisa/jupyter-nim-kernel/blob/nim-based/nim-spec/kernel.json) change 
+`"C:\\<blah>\\nimkernel"` to the **full** path of `nimkernel` executable 
+- run `nimble setup`
 
 Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically linked, so it needs to be installed and added to path  
 
@@ -38,10 +45,9 @@ State:
 
 TODO
 ----
-- Shared context. This is currently top/near-top priority. Any help is appreciated. **HARD**
-  Context is shared between block `n` and `n-1`
+- Properly share context. This is currently top/near-top priority. Any help is appreciated. **HARD**
 - Finish implementing messaging ( completion, introspection, history, display... )
-- Make this a nimble package, that automatically installs the kernel. **MEDIUM**, needs patching nimble?
+- ~~Make this a nimble package, that automatically installs the kernel. **MEDIUM**, needs patching nimble?~~ **DONE?**
 - Handle shutdown gracefully
 - Connect to nimsuggest via socket, parse its output for introspection requests
 - Documentation lookup magic? eg. put docs in a subfolder, then `#>doc sequtils` opens a browser to the correct `.html` page ( possibly local )  
