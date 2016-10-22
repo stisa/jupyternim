@@ -42,6 +42,7 @@ State:
 - Compiler output and results are shown.
 - Basic 2d plotting  
 - **Context partially shared**.
+- **FIXME** code at top level in a block is run in every subsequent block. As a workaround, use `when isMainModule:` to avoid this.
 
 TODO
 ----
