@@ -14,3 +14,4 @@ static:
     "language": "nim",
     "file_extension": ".nim" }
   writeFile(getPkgDir()/"nim-spec"/"kernel.json", $kernelspec)
+  echo staticExec(r"jupyter-kernelspec install " & getPkgDir() / "nim-spec" & " --user") # install the spec

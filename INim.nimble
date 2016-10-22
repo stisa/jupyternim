@@ -11,7 +11,6 @@ requires "nim >= 0.14.2"
 requires "zmq"
 requires "hmac"
 requires "nimSHA2"
-
 # Optional: graph
 
 ##  Write the spec... 
@@ -22,12 +21,12 @@ requires "nimSHA2"
 #  "file_extension": ".nim"
 #}""")
 after install:
-  withDir thisDir():
-    echo "Saving kernel spec"
-    exec(r"nim c kernelspec.nim")
-    echo "Building Kernel"
-    exec(r"nim c --threads:on nimkernel.nim") # compile kernel
-    exec(r"jupyter-kernelspec install nim-spec --user") # install the spec
+  #withDir thisDir():
+  echo "Saving kernel spec"
+  exec(r"nim c kernelspec.nim")
+  echo "Building Kernel"
+  exec(r"nim c --threads:on nimkernel.nim") # compile kernel
+  #exec(r"jupyter-kernelspec install nim-spec --user") # install the spec
 
 task setup, "Setup the Kernel":
     echo "Saving kernel spec"
