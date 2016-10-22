@@ -21,18 +21,20 @@ requires "nimSHA2"
 #  "language": "nim",
 #  "file_extension": ".nim"
 #}""")
-
 after install:
-  echo "Saving kernel spec"
-  exec(r"nim c kernelspec.nim")
-  echo "Building Kernel"
-  exec(r"nim c --threads:on nimkernel.nim") # compile kernel
-  exec(r"jupyter-kernelspec install nim-spec") # install the spec
-  
+  withDir thisDir():
+    echo "Saving kernel spec"
+    exec(r"nim c kernelspec.nim")
+    echo "Building Kernel"
+    exec(r"nim c --threads:on nimkernel.nim") # compile kernel
+    exec(r"jupyter-kernelspec install nim-spec --user") # install the spec
+
 task setup, "Setup the Kernel":
-  exec(r"nim c --threads:on nimkernel.nim") # compile kernel
-  exec(r"jupyter-kernelspec install nim-spec") # install the spec
-  setCommand("nop")
+    echo "Saving kernel spec"
+    exec(r"nim c kernelspec.nim")
+    echo "Building Kernel"
+    exec(r"nim c --threads:on nimkernel.nim") # compile kernel
+    exec(r"jupyter-kernelspec install nim-spec --user") # install the spec
 
 task buildkernel, "Build the Kernel":
   exec(r"nim c --threads:on nimkernel.nim") # compile kernel
