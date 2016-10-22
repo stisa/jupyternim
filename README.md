@@ -9,6 +9,8 @@ The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting
   
 Look at [example-notebook](https://github.com/stisa/INim/blob/master/examples/example-notebook.ipynb) for some examples.  
 
+NOTE: running a notebook with this creates a directory `inimtemp` in which it stores blocks of code, pngs, compiled outputs, etc.
+
 Prereqs
 -------
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
