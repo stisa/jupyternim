@@ -18,16 +18,19 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   result.pub = createIOPub( connmsg.ip, connmsg.iopub_port, connmsg.key ) # Initialize iopub 
   result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key, result.pub ) # Initialize shell
   result.control = createControl( connmsg.ip, connmsg.control_port, connmsg.key ) # Initialize iopub 
-  #result.pollitems
+  
+  if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
   result.running = true
 
 proc shutdown(k: Kernel) {.noconv.}=
   debug "Shutting Down"
   k.running = false
-  k.hb.socket.close()
+  k.hb.close()
   k.pub.socket.close()
   k.shell.socket.close()
   k.control.socket.close()
+  if existsDir("inimtemp"): removeDir("inimtemp") # Remove temp dir on exit
+    
   sync()
 
 
@@ -40,6 +43,8 @@ var connmsg = arguments[0].parseConnMsg()
 var kernel :Kernel = connmsg.init()
 
 addQuitProc(proc(){.noconv.} = kernel.shutdown() )
+
+setControlCHook(proc(){.noconv.} = quit()) # Hope this fixes crashing at shutdown
 
 spawn kernel.hb.beat()
 

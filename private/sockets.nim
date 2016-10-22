@@ -6,6 +6,7 @@ var execcount {.global.} = 0 # Monotonically increasing counter
 
 type Heartbeat* = object
   socket*: TConnection
+  alive: bool
 
 type IOPub* = object
   socket*: TConnection
@@ -22,19 +23,28 @@ type
 proc createHB*(ip:string,hbport:BiggestInt): Heartbeat =
   ## Create the heartbeat socket
   result.socket = zmq.listen("tcp://"&ip&":"& $hbport)
-
-proc beat*(hb:Heartbeat) =
+  result.alive = true
+proc beat*(hb: Heartbeat) =
   ## Execute the heartbeat loop.
   ## Usually ``spawn``ed to avoid killing the kernel
   ## when it's busy
   debug "starting hb loop..."
-  while true:
-    var s = hb.socket.receive() # Read from socket
+  while hb.alive:
+    var s :string
+    try:
+      s = hb.socket.receive() # Read from socket
+    except:
+      debug "broke Heartbeat Loop"
+      break
+      
     if s!=nil: 
       hb.socket.send(s) # Echo back what we read
     else:
       debug "broke Heartbeat Loop"
       break
+proc close*(hb: var Heartbeat) = 
+  hb.alive = false
+  hb.socket.close()
 
 proc createIOPub*(ip:string,port:BiggestInt , key:string): IOPub =
   ## Create the IOPub socket
@@ -132,9 +142,6 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   inc execcount
   
   spawn shell.pub.send_state("busy") #move to thread
-
-  # should be removed on exit ?
-  if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
 
   let code = msg.content["code"].str # The code to be executed
   
@@ -376,6 +383,8 @@ proc receive*(shell:Shell) =
   ## Receive a message on the shell socket, decode it and handle operations
   let recvdmsg : WireMessage = shell.socket.receive_wire_msg()
   debug "sending: ", $recvdmsg.msg_type
+  debug recvdmsg.content
+  debug "end sending"
   shell.handle(recvdmsg)
 
 type Control* = object
@@ -389,10 +398,10 @@ proc createControl*(ip:string,port:BiggestInt,key:string): Control =
 
 proc handle(c:Control,m:WireMessage) =
   if m.msg_type == Shutdown:
-    var content : JsonNode
+    #var content : JsonNode
     debug "shutdown requested"
-    content = %* { "restart": false }    
-    c.socket.send_wire_msg("shutdown_reply", m , content, c.key)
+    #content = %* { "restart": false }    
+    c.socket.send_wire_msg("shutdown_reply", m , m.content, c.key)
     quit()
   #if m.msg_type ==
 
