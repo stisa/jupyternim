@@ -61,13 +61,13 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
   content = %* {
     "protocol_version": "5.0",
     "ipython_version": [1, 1, 0, ""],
-    "language_version": [0, 14, 2], # TODO get compiler version from the compiler
+    "language_version": [0, 15, 0], # TODO get compiler version from the compiler
     "language": "nim",
     "implementation": "nimpure",
-    "implementation_version": "0.1",
+    "implementation_version": "0.2",
     "language_info": {
       "name": "nim",
-      "version": "0.1",
+      "version": "0.2",
       "mimetype": "text/x-nimrod",
       "file_extension": ".nim",
       "pygments_lexer": "",
@@ -83,7 +83,7 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
 
 const inlineplot = r"""
 import graph,os
-template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, scale:float=1,yscale:float=1, bgColor:Color = White) =
+template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, scale:float=100,yscale:float=100, bgColor:Color = White) =
   let srf = drawXY(x,y,lncolor, mode, scale,yscale, bgColor)
   let pathto = currentSourcePath().changeFileExt(".png")
   srf.saveSurfaceTo(pathto)
