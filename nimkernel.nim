@@ -7,6 +7,7 @@ type KernelObj = object
   shell*: Shell
   pub*: IOPub
   control*: Control
+  running: bool
   
 type Kernel = ref KernelObj
 
@@ -18,13 +19,16 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key, result.pub ) # Initialize shell
   result.control = createControl( connmsg.ip, connmsg.control_port, connmsg.key ) # Initialize iopub 
   #result.pollitems
+  result.running = true
 
 proc shutdown(k: Kernel) {.noconv.}=
   debug "Shutting Down"
+  k.running = false
   k.hb.socket.close()
   k.pub.socket.close()
   k.shell.socket.close()
   k.control.socket.close()
+  sync()
 
 
 let arguments = commandLineParams() # [0] should always be the connection file
@@ -40,7 +44,7 @@ addQuitProc(proc(){.noconv.} = kernel.shutdown() )
 spawn kernel.hb.beat()
 
 debug "Starting to poll..."
-while true:
+while kernel.running:
   if kernel.control.socket.getsockopt(EVENTS) == 3 : kernel.control.receive()
   elif kernel.shell.socket.getsockopt(EVENTS) == 3 : kernel.shell.receive()
   elif kernel.pub.socket.getsockopt(EVENTS) == 3 : kernel.pub.receive()
