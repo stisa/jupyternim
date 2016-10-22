@@ -32,6 +32,9 @@ proc beat*(hb:Heartbeat) =
     var s = hb.socket.receive() # Read from socket
     if s!=nil: 
       hb.socket.send(s) # Echo back what we read
+    else:
+      debug "broke Heartbeat Loop"
+      break
 
 proc createIOPub*(ip:string,port:BiggestInt , key:string): IOPub =
   ## Create the IOPub socket
@@ -120,7 +123,10 @@ when isMainModule:
 """
 
 var last_sucess_block: int = 0 # This variable maintains the last succesfully compiled block in this session.
-
+var flags: seq[string] = @["--hints:off","--verbosity:0","--d:release"] # Default flags, will be overwritten if others are passed
+proc flatten(flags:seq[string]):string =
+  result = " "
+  for f in flags: result.add(f&" ")
 
 proc handleExecute(shell:Shell,msg:WireMessage) =
   inc execcount
@@ -142,6 +148,12 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
       plotw = defplot[0].parseInt
       ploth = defplot[1].parseInt
 
+  let hasFlags = if code.contains("#>flags"): true else: false # Tell the kernel we have a plot to display 
+  if hasFlags:
+    let flagstart = code.find("#>inlineplot")+"#>inlineplot".len+1
+    let flagend = code.find("\n",flagstart)
+    flags = code[flagstart..flagend].split()
+  
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
   if hasPlot: writeFile(srcfile,inlineplot&injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
@@ -158,7 +170,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
-  var compiler_out = execProcess("nim c --hints:off -o:inimtemp/compiled.out "&srcfile) # compile block
+  var compiler_out = execProcess("nim c"&flatten(flags)&"-o:inimtemp/compiled.out "&srcfile) # compile block
   
 
   var status = "ok" # OR 'error' OR 'abort'
@@ -351,8 +363,8 @@ proc handle(s:Shell,m:WireMessage) =
   elif m.msg_type == Execute:
     handleExecute(s,m)
   elif m.msg_type == Shutdown :
-    # TODO quit
     debug "kernel wants to shutdown"
+    quit()
   elif m.msg_type == Introspection : handleIntrospection(s,m)
   elif m.msg_type == Completion : handleCompletion(s,m)
   elif m.msg_type == History : handleHistory(s,m)
@@ -381,6 +393,7 @@ proc handle(c:Control,m:WireMessage) =
     debug "shutdown requested"
     content = %* { "restart": false }    
     c.socket.send_wire_msg("shutdown_reply", m , content, c.key)
+    quit()
   #if m.msg_type ==
 
 proc receive*(cont:Control) =
