@@ -14,6 +14,7 @@ type WireType * = enum
   Status = 9
   Shutdown = 10
 
+  Comm_Open = 21 # note defined in spec?
 
 type ConnectionMessage * = object 
   ## The connection message the notebook sends when starting
@@ -131,11 +132,14 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
       of "is_complete_request": result.msg_type = WireType.Complete
       #of "comm_info_request": result.msg_type = WireType.Comm_info <- in spec 5.1
       of "comm_open":
-        result.msg_type = WireType.Unknown
+        result.msg_type = WireType.Comm_Open
         debug "unused msg: comm_open"
       else: 
         result.msg_type = WireType.Unknown
-        debug "Unknown WireMsg: ", result.header # Dump the header for unknown messages 
+        debug "Unknown WireMsg: ", result.header, " follows:" # Dump the header for unknown messages
+        debug result.content
+        debug "Unknown WireMsg End"
+
     else:
       debug "NO WIRE MESSAGE TYPE???????????????"
 
