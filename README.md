@@ -38,6 +38,16 @@ or
 
 Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically linked, so it needs to be installed and added to path  
 
+Magics:
+-------
+
+`#>flags < --some > < --d:flas >`
+Pass flags to nim compiler, default is `--hints:off --verbosity:0 -d:release`.  
+Passing new flags overwrites all other flags.
+
+`#>inlineplot <w> <h>`
+Enable [graph](https://github.com/stisa/graph) and appends a `plot` proc.
+
 State:
 ------
 - Compiles and runs code.
