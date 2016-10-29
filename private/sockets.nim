@@ -157,7 +157,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   let hasFlags = if code.contains("#>flags"): true else: false # Tell the kernel we have a plot to display 
   if hasFlags:
-    let flagstart = code.find("#>inlineplot")+"#>inlineplot".len+1
+    let flagstart = code.find("#>flags")+"#>flags".len+1
     let flagend = code.find("\n",flagstart)
     flags = code[flagstart..flagend].split()
   
