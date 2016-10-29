@@ -155,12 +155,13 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
       plotw = defplot[0].parseInt
       ploth = defplot[1].parseInt
 
-  let hasFlags = if code.contains("#>flags"): true else: false # Tell the kernel we have a plot to display 
+  let hasFlags = if code.contains("#>flags"): true else: false
   if hasFlags:
     let flagstart = code.find("#>flags")+"#>flags".len+1
-    let flagend = code.find("\n",flagstart)
+    let nwline = code.find('\u000A',flagstart)
+    let flagend = if nwline != -1: nwline else: code.len
     flags = code[flagstart..flagend].split()
-  
+  debug "With flags:",flags.flatten
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
   if hasPlot: writeFile(srcfile,inlineplot&injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
@@ -177,7 +178,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
-  var compiler_out = execProcess("nim c"&flatten(flags)&"-o:inimtemp/compiled.out "&srcfile) # compile block
+  var compiler_out = execProcess("nim c "&flatten(flags)&" -o:inimtemp/compiled.out "&srcfile) # compile block
   
 
   var status = "ok" # OR 'error' OR 'abort'
