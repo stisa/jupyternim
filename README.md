@@ -15,7 +15,7 @@ Prereqs
 -------
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
 - a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
-- a zeromq installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.0.4 . It must be in PATH or the kernel won't run.
+- a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.0.4 . **It must be in PATH or the kernel won't run**.
 - **OPTIONAL** My toy [Graph lib](https://github.com/stisa/graph). I will add it to nimble when I flesh it out more.
 
 Running: 
@@ -23,6 +23,12 @@ Running:
 The kernel should be automatically compiled and registered with jupyter just by doing `nimble install inim`
 
 Alternatively, try one of the following:
+
+- clone this repo: `git clone https://github.com/stisa/Inim`
+- then go into the cloned dir `cd INim`
+- and install with nimble `nimble install`
+
+or
 
 - compile the kernel binary: `nim c --threads:on nimkernel.nim`
 - in [nim-spec/kernel.json](https://github.com/stisa/jupyter-nim-kernel/blob/nim-based/nim-spec/kernel.json) change 
@@ -41,12 +47,31 @@ Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically link
 Magics:
 -------
 
-`#>flags < --some > < --d:flas >`
+`#>flags < --some > < --d:flag >`
 Pass flags to nim compiler, default is `--hints:off --verbosity:0 -d:release`.  
-Passing new flags overwrites all other flags.
+Passing new flags overwrites all other previous flags, even default ones.
+Example: 
+```nim
+#>flags -d:test
+
+echo "hi"
+when defined test:
+  echo "test defined"
+else:
+  echo "test not defined"
+```
+Outputs:
+```
+hi
+test defined
+```
 
 `#>inlineplot <w> <h>`
 Enable [graph](https://github.com/stisa/graph) and appends a `plot` proc.
+Example:
+```nim
+#>inlineplot 320 240
+```
 
 State:
 ------
@@ -66,7 +91,7 @@ TODO
 - Documentation lookup magic? eg. put docs in a subfolder, then `#>doc sequtils` opens a browser to the correct `.html` page ( possibly local )  
 - Magics to reduce verbosity, pass flags to compiler
 - Move plot setup outside `handleExecute`
-
+- Do we want to distribute libzmq?
 
 References
 ----------
@@ -93,3 +118,4 @@ Internal Notes
 --------------
 Messages must be multipart
 signature must be lowercase
+http://nim-lang.org/docs/tinyc.html
