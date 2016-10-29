@@ -8,3 +8,4 @@ fzmq.nim
 nimsuggest.log
 inimtemp
 .ipynb_checkpoints
+*.dll
