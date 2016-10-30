@@ -6,7 +6,6 @@ static:
   proc getPkgDir():string=
     when defined debugBuild:
       result = parentDir(currentSourcePath())
-      echo result
     else:
       let nimblePkgsDir = getHomeDir() / ".nimble" / "pkgs"
       for s in walkDir(nimblePkgsDir):
