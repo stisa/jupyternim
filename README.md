@@ -8,7 +8,7 @@ Experimental plotting is available using the magic `#>inlineplot width height`, 
 ~~The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting libs may be considered, and as always, PRs are welcome!~~
 A simple wrapper around `matplotlib` is provided [here](inim/pyplot.nim). **Only python 3 is supported for now**
   
-Look at [example-notebook](https://github.com/stisa/INim/blob/master/examples/example-notebook.ipynb) for some examples.  
+Look at [example-notebook](examples/example-notebook.ipynb) for some examples.  
 
 NOTE: running a notebook with this creates a directory `inimtemp` in which it stores blocks of code, pngs, compiled outputs, etc.
 
