@@ -45,8 +45,8 @@ character          description
 ]#
 proc initPlot*()= 
   initialize()
-  echo runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplot
-
+  discard runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplot
+  
 proc `$`[T](a:openarray[T]):string =
   result = "["
   for e in 0..<a.len:
@@ -57,8 +57,8 @@ proc `$`[T](a:openarray[T]):string =
 
 template endPlot*():untyped= 
   let pngname = instantiationInfo(0).filename
-  discard runSimpleString("pp.savefig(\"inimtemp/"&pngname.changeFileExt(".png")&"\")")
-  finalize()
+  discard runSimpleString("pp.savefig(\"inimtemp/"&pngname.changeFileExt(".png")&"\")\npp.close()")
+#  finalize()
 
 proc plot*[T](x,y:openarray[T],lncolor:string="r",lnstyle:string="-",lnmarker:string="",label:string="")=
  # assert(lnstyle in {'-', "--", "-.", ':'})
