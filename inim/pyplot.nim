@@ -45,12 +45,15 @@ character          description
 ]#
 proc initPlot*()= 
   initialize()
-  discard runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplo
+  echo runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplot
+
 proc `$`[T](a:openarray[T]):string =
   result = "["
-  for e in 0..<a.len-1:
+  for e in 0..<a.len:
     result.add($a[e]&',')
-  result.add($a[^1]&"]")
+    if e == a.len-1:
+      result.add($a[e])
+  result.add("]")
 
 template endPlot*():untyped= 
   let pngname = instantiationInfo(0).filename
