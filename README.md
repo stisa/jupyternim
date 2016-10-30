@@ -6,7 +6,7 @@ There's a version reusing the python machinery here: [jupyter-nim-kernel](https:
 I'm going to port features from there to here ( as time permits ).  
 Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`  
 ~~The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting libs may be considered, and as always, PRs are welcome!~~
-A simple wrapper around `matplotlib` is provided [here](inim/pyplot). **Only python 3 is supported for now**
+A simple wrapper around `matplotlib` is provided [here](inim/pyplot.nim). **Only python 3 is supported for now**
   
 Look at [example-notebook](https://github.com/stisa/INim/blob/master/examples/example-notebook.ipynb) for some examples.  
 
@@ -17,7 +17,7 @@ Prereqs
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
 - a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
 - a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.0.4 . **It must be in PATH or the kernel won't run**.
-- a `matplotlib` installation, only if you want to use the basic wrapper provided [here](inim/pyplot) ( with anaconda, just `conda install matplotlib` and you're set )
+- a `matplotlib` installation, only if you want to use the basic wrapper provided [here](inim/pyplot.nim) ( with anaconda, just `conda install matplotlib` and you're set )
 - ~~**OPTIONAL** My toy [Graph lib](https://github.com/stisa/graph). I will add it to nimble when I flesh it out more.~~
 
 Running: 
@@ -66,7 +66,7 @@ test defined
 
 **inlining a plot**
 `#>inlineplot <w> <h>`
-Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](inim/pyplot)
+Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](inim/pyplot.nim)
 Example:
 ```nim
 #>inlineplot 320 240
