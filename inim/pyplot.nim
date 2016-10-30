@@ -43,36 +43,47 @@ character          description
   _                hline marker
 ================    ===============================
 ]#
-proc initPlot():int {.discardable} = runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplo
+proc initPlot*()= 
+  initialize()
+  discard runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplo
 proc `$`[T](a:openarray[T]):string =
   result = "["
   for e in 0..<a.len-1:
     result.add($a[e]&',')
   result.add($a[^1]&"]")
-proc plot2D[T](x,y:openarray[T],lncolor:string="r",lnstyle:string="-",lnmarker:string=""):int {.discardable} = 
-  runSimpleString("pp.plot("& $x & "," & $y & "," & "color='"&lncolor&"',"& "linestyle='"&lnstyle&"',"& "marker='"&lnmarker&"')")
 
-template savePlot()= 
-  let pngname = currentSourcePath().splitfile.name
-  echo pngname
-  echo currentSourcePath()
+template endPlot*():untyped= 
+  let pngname = instantiationInfo(0).filename
   discard runSimpleString("pp.savefig(\"inimtemp/"&pngname.changeFileExt(".png")&"\")")
+  finalize()
 
-proc plot* [T](x,y:openarray[T],lncolor:string="r",lnstyle:string="-",lnmarker:string="")=
-  when isMainModule:
-  # assert(lnstyle in {'-', "--", "-.", ':'})
-    const markers = [" ","",".", ",", "o", "v", "^", "<", ">", "1", "2", "3", "4", "s", "p", "*", "h", "H", "+", "x", "D", "d", "|", "_"]
-    const styles =  [" ","","-","--","-.",":"]
-    const colors = ["r","b","g","c","m","y","k","w"]
-    assert(lnmarker in markers)
-    assert(lncolor in colors)
-    assert(lnstyle in styles)    
-    initialize()
-    initPlot()
-    plot2D(x,y,lncolor,lnstyle,lnmarker)
-    savePlot()
-    finalize()
-  else: discard
-  
+proc plot*[T](x,y:openarray[T],lncolor:string="r",lnstyle:string="-",lnmarker:string="",label:string="")=
+ # assert(lnstyle in {'-', "--", "-.", ':'})
+  const markers = [" ","",".", ",", "o", "v", "^", "<", ">", "1", "2", "3", "4", "s", "p", "*", "h", "H", "+", "x", "D", "d", "|", "_"]
+  const styles =  [" ","","-","--","-.",":"]
+  const colors = ["r","b","g","c","m","y","k","w"]
+  assert(lnmarker in markers)
+  assert(lncolor in colors)
+  assert(lnstyle in styles)    
+  if label!="":
+    discard runSimpleString("pp.plot("& $x & "," & $y & "," & "color='"&lncolor&"',"& "linestyle='"&lnstyle&"',"& "marker='"&lnmarker&"', label='"&label&"')")
+  else:
+    discard runSimpleString("pp.plot("& $x & "," & $y & "," & "color='"&lncolor&"',"& "linestyle='"&lnstyle&"',"& "marker='"&lnmarker&"')")
+
+proc xlabel*(lb:string):int {.discardable} = runSimpleString("pp.xlabel('"&lb&"')")
+proc ylabel*(lb:string):int {.discardable} = runSimpleString("pp.ylabel('"&lb&"')")
+proc title*(t:string):int {.discardable} = runSimpleString("pp.title('"&t&"')")
+proc legend*():int {.discardable} = runSimpleString("pp.legend()")
+
+template show*(body:untyped):untyped=
+  from os import changeFileExt
+  initPlot()
+  body
+  endPlot()
+
 when isMainModule:
-  plot(@[0.0,0.5,1],@[0.0,1,2],"b"," ","o")
+  show:  
+    plot(@[0.0,0.5,1],@[0.0,1,2],"b","--","o","dots")
+    xlabel("dotssss")
+    legend()
+    plot(@[0.0,0.2,0.8],@[0.0,1,2],"r","-","o","dotsline")
