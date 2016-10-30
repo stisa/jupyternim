@@ -142,7 +142,8 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   let code = msg.content["code"].str # The code to be executed
   
-  hasPlot = if code.contains("#>inlineplot"): true else: false # Tell the kernel we have a plot to display 
+  if code.contains("#>inlineplot"):
+    hasPlot =  true 
   if hasPlot:
     let plotstart = code.find("#>inlineplot")+"#>inlineplot".len+1
     let defplot = code[plotstart..code.find('\u000A',plotstart)].split()
