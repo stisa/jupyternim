@@ -1,0 +1,2 @@
+--hints:off
+--threads:on

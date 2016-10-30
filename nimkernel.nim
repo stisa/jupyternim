@@ -23,15 +23,15 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   result.running = true
 
 proc shutdown(k: Kernel) {.noconv.}=
-  debug "Shutting Down"
+  debug "Shutting Down..."
   k.running = false
   k.hb.close()
   k.pub.socket.close()
   k.shell.socket.close()
   k.control.socket.close()
-  if existsDir("inimtemp"): removeDir("inimtemp") # Remove temp dir on exit
-    
-  sync()
+  if existsDir("inimtemp"): 
+    debug "Removing inimtemp..."
+    removeDir("inimtemp") # Remove temp dir on exit
 
 
 let arguments = commandLineParams() # [0] should always be the connection file
@@ -44,7 +44,10 @@ var kernel :Kernel = connmsg.init()
 
 addQuitProc(proc(){.noconv.} = kernel.shutdown() )
 
-setControlCHook(proc(){.noconv.} = quit()) # Hope this fixes crashing at shutdown
+setControlCHook(proc(){.noconv.} =
+  kernel.shutdown()
+  quit()
+) # Hope this fixes crashing at shutdown
 
 spawn kernel.hb.beat()
 
