@@ -84,7 +84,7 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
       "mimetype": "text/x-nimrod",
       "file_extension": ".nim",
       "pygments_lexer": "",
-      "codemirror_mode": "",
+      "codemirror_mode": "nim",
       "nbconvert_exporter": "",
     },
     "banner": ""
@@ -94,18 +94,11 @@ proc handleKernelInfo(s:Shell,m:WireMessage) =
   #echo "sending kernel info reply and idle"
   spawn s.pub.send_state("idle") #move to thread
 
-const inlineplot = r"""
-import graph,os
-template plot*(x,y:openarray[float], lncolor:Color=Red, mode:PlotMode=Lines, scale:float=100,yscale:float=100, bgColor:Color = White) =
-  let srf = drawXY(x,y,lncolor, mode, scale,yscale, bgColor)
-  let pathto = currentSourcePath().changeFileExt(".png")
-  srf.saveSurfaceTo(pathto)
-  
-"""
+const inlineplot = "\nimport inim/pyplot\n"
 
 ## Ugly way of injecting
 proc injectInclude*(blocknum:int):string = 
-  if blocknum>0: result = "include imports \n"
+  if blocknum>0: result = "\ninclude imports \n"
   else: result=""
 
 proc exportWrapper*(blocknum:int=0):string = """
@@ -125,7 +118,8 @@ when isMainModule:
     if fileExists("inimtemp/imports.nim"):
       var fs = open("inimtemp/imports.nim",fmAppend)
       fs.write("import "&currentSourcePath().extractFilename().changeFileExt("")&"\n")
-    else: writeFile("inimtemp/imports.nim", "import "&currentSourcePath().extractFilename().changeFileExt("")&"\n" )
+      fs.write("export "&currentSourcePath().extractFilename().changeFileExt("")&"\n")
+    else: writeFile("inimtemp/imports.nim", "import "&currentSourcePath().extractFilename().changeFileExt("")&"\nexport "&currentSourcePath().extractFilename().changeFileExt("")&"\n" )
 
   addQuitProc(appendExport)
   addQuitProc(wrapEchos)
@@ -134,6 +128,9 @@ when isMainModule:
 
 var last_sucess_block: int = 0 # This variable maintains the last succesfully compiled block in this session.
 var flags: seq[string] = @["--hints:off","--verbosity:0","--d:release"] # Default flags, will be overwritten if others are passed
+var hasPlot: bool = false
+var ploth = 480
+var plotw = 640
 proc flatten(flags:seq[string]):string =
   result = " "
   for f in flags: result.add(f&" ")
@@ -145,15 +142,14 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   let code = msg.content["code"].str # The code to be executed
   
-  let hasPlot = if code.contains("#>inlineplot"): true else: false # Tell the kernel we have a plot to display 
-  var ploth = 480
-  var plotw = 640
+  if code.contains("#>inlineplot"):
+    hasPlot =  true 
   if hasPlot:
     let plotstart = code.find("#>inlineplot")+"#>inlineplot".len+1
-    let defplot = code[plotstart..plotstart+10].split()
-    if defplot[0].parseInt > 0 :
-      plotw = defplot[0].parseInt
-      ploth = defplot[1].parseInt
+    let defplot = code[plotstart..code.find('\u000A',plotstart)].split()
+    if defplot.len > 0 :
+      plotw = if defplot[0].isDigit: defplot[0].parseInt else: plotw
+      ploth = if defplot[1].isDigit: defplot[1].parseInt else: ploth
 
   let hasFlags = if code.contains("#>flags"): true else: false
   if hasFlags:
@@ -161,9 +157,18 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
     let nwline = code.find('\u000A',flagstart)
     let flagend = if nwline != -1: nwline else: code.len
     flags = code[flagstart..flagend].split()
+  
   debug "With flags:",flags.flatten
+  
+  if code.contains("#>clear all") and existsDir("inimtemp"):
+    debug "Cleaning up..."
+    removeDir("inimtemp")
+    createDir("inimtemp")
+    writeFile("inimtemp/imports.nim","") #reset imports file
+
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
+  
   if hasPlot: writeFile(srcfile,inlineplot&injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
   else: writeFile(srcfile,injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
   

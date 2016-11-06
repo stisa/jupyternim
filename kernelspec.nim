@@ -1,13 +1,16 @@
 static:
-  from os import getHomeDir,walkDir,`/`,PathComponent,execShellCmd
+  from os import getHomeDir,walkDir,`/`,PathComponent,execShellCmd,parentDir
   from strutils import contains
   import json
 
   proc getPkgDir():string=
-    let nimblePkgsDir = getHomeDir() / ".nimble" / "pkgs"
-    for s in walkDir(nimblePkgsDir):
-      if s.kind == pcDir and s.path.contains("INim"): return s.path
-  
+    when defined debugBuild:
+      result = parentDir(currentSourcePath())
+    else:
+      let nimblePkgsDir = getHomeDir() / ".nimble" / "pkgs"
+      for s in walkDir(nimblePkgsDir):
+        if s.kind == pcDir and s.path.contains("INim"): return s.path
+
   let kernelspec = %*{
     "argv": [getPkgDir() / "nimkernel",  "{connection_file}"],
     "display_name": "Nim",
