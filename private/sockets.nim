@@ -110,6 +110,9 @@ when isMainModule:
     let code = readFile(currentSourcePath())
     var outcode = ""
     for ln in code.splitLines:
+      if ln.startsWith("#"): 
+        outcode &= ln&"\n"
+        continue
       if ln.startsWith("echo"): outcode &= ln.replace("echo","when isMainModule:\n  echo")&"\n"
       else: outcode &= ln&"\n"
     writeFile(currentSourcePath(),outcode)
@@ -131,6 +134,9 @@ var flags: seq[string] = @["--hints:off","--verbosity:0","--d:release"] # Defaul
 var hasPlot: bool = false
 var ploth = 480
 var plotw = 640
+var use_tcc = false
+var tcc_path = ""
+
 proc flatten(flags:seq[string]):string =
   result = " "
   for f in flags: result.add(f&" ")
@@ -162,10 +168,25 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   
   if code.contains("#>clear all") and existsDir("inimtemp"):
     debug "Cleaning up..."
+    flags = @["--hints:off","--verbosity:0","--d:release"]
+    hasPlot = false
+    ploth = 480
+    plotw = 640
+    use_tcc = false
+    tcc_path = ""
     removeDir("inimtemp")
     createDir("inimtemp")
     writeFile("inimtemp/imports.nim","") #reset imports file
 
+  if code.contains("#>tinycc"): 
+    use_tcc = true
+    tcc_path = " --cc:tcc"
+    let tccstart = code.find("#>tinycc")+"#>tinycc".len+1
+    let nwline = code.find('\u000A',tccstart)
+    let tccend = if nwline != -1: nwline else: code.len
+    if code[tccstart..tccend].len>3: # 3 is arbitrary, C:\ is already 3 chars
+      tcc_path&=" -L:"&code[tccstart..tccend]&" "
+    debug tcc_path
   let srcfile = "inimtemp/block" & $execcount & ".nim"
 
   
@@ -183,8 +204,8 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
-  var compiler_out = execProcess("nim c "&flatten(flags)&" -o:inimtemp/compiled.out "&srcfile) # compile block
-  
+  var compiler_out = execProcess("nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled.out "&srcfile) # compile block
+  debug "nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled.out "&srcfile 
 
   var status = "ok" # OR 'error' OR 'abort'
   var std_type = "stdout"
