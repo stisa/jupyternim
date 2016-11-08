@@ -60,11 +60,11 @@ proc genUUID(nb,upper:bool = true):string =
   for c in result.mitems:
     if c == 'y' : c = random(validy)
     elif c == 'x': c = random(validx)
-  if not upper: result = result.toLower
+  if not upper: result = result.toLowerAscii
 
 proc sign(msg:string,key:string):string =
   ##Sign a message with a secure signature.
-  result = hmac.hmac_sha256(key,msg).hex.toLower
+  result = hmac.hmac_sha256(key,msg).hex.toLowerAscii
 
 proc parseConnMsg*(connfile:string):ConnectionMessage =
   let parsedconn = parseFile(connfile)
