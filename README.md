@@ -42,10 +42,12 @@ Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically link
 
 Magics:
 -------
+Arguments between square brackets are optional.
 
-**passing flags**
 
-`#>flags < --some > < --d:flag >`
+###passing flags
+
+`#>flags [flag1 flag2 ...] >`
 Pass flags to nim compiler, default is `--hints:off --verbosity:0 -d:release`.  
 Passing new flags overwrites all other previous flags, even default ones.
 Example: 
@@ -60,12 +62,13 @@ else:
 ```
 Outputs:
 ```
+# A lot of compilation info because verbosity is reset to 1, then
 hi
 test defined
 ```
 
-**inlining a plot**
-`#>inlineplot <w> <h>`
+###inlining a plot  
+`#>inlineplot [width height]`
 Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](inim/pyplot.nim)
 Example:
 ```nim
@@ -76,14 +79,18 @@ show:
   legend() # show the legend, in this case y=x
 ```
 
-**delete old temp files**
+###reset and clear 
 `#>clear all`
+
+### use tcc  
+`#>tcc [absolute/path/to/libtcc]`
 
 State:
 ------
 - Compiles and runs code.
 - Compiler output and results are shown.
 - Basic 2d plotting  
+- Temporarily use `custom.js` to load nim highlighting
 - **Context partially shared**.
 - **FIXME** code at top level in a block is run in every subsequent block. As a workaround, use `when isMainModule:` to avoid this.
 
