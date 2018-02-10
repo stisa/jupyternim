@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Silvio T."
 description   = "A Jupyter Kernel for Nim"
 license       = "MIT"
@@ -11,6 +11,7 @@ requires "nim >= 0.14.2"
 requires "zmq"
 requires "hmac"
 requires "nimSHA2"
+requires "python3"
 # Optional: graph
 
 ##  Write the spec... 

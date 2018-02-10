@@ -1,6 +1,7 @@
 import python3 #TODO python2
 
 from os import splitfile,changeFileExt
+import strutils
 #[
 ================   ===============================
 character          description
@@ -72,6 +73,11 @@ proc plot*[T](x,y:openarray[T],lncolor:string="r",lnstyle:string="-",lnmarker:st
     discard runSimpleString("pp.plot("& $x & "," & $y & "," & "color='"&lncolor&"',"& "linestyle='"&lnstyle&"',"& "marker='"&lnmarker&"', label='"&label&"')")
   else:
     discard runSimpleString("pp.plot("& $x & "," & $y & "," & "color='"&lncolor&"',"& "linestyle='"&lnstyle&"',"& "marker='"&lnmarker&"')")
+
+proc hist*[T](x:openarray[T], bins: int = 0, log: bool = false)=
+  let histStr = if bins == 0: "None" else: $bins
+  let logStr = if log: "True" else: "False"
+  discard runSimpleString("pp.hist($#, bins=$#, log=$#)" % [$x, histStr, logStr])
 
 proc xlabel*(lb:string):int {.discardable} = runSimpleString("pp.xlabel('"&lb&"')")
 proc ylabel*(lb:string):int {.discardable} = runSimpleString("pp.ylabel('"&lb&"')")
