@@ -60,7 +60,7 @@ test defined
 
 **inlining a plot**
 `#>inlineplot <w> <h>`
-Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](jupyternim/pyplot.nim)
+Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](src/jupyternim/pyplot.nim)
 Example:
 ```nim
 #>inlineplot 320 240
