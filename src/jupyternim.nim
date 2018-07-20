@@ -1,4 +1,4 @@
-import ./jupyternimpkg/[sockets, messages]
+import ./jupyternim/[sockets, messages]
 import os,threadpool,zmq, json
 from osproc import execProcess
 from ospaths import splitPath

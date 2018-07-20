@@ -132,7 +132,7 @@ proc handleKernelInfo(s:Shell, m:WireMessage) =
   #echo "sending kernel info reply and idle"
   spawn s.pub.sendState("idle") #move to thread
 
-const inlineplot = "\nimport inim/pyplot\n"
+const inlineplot = "\nimport jupyternim/pyplot\n"
 
 ## Ugly way of injecting
 proc injectInclude*(blocknum:int):string = 
@@ -168,7 +168,7 @@ when isMainModule:
 """
 
 var last_sucess_block: int = 0 # This variable maintains the last succesfully compiled block in this session.
-var flags: seq[string] = @["--hints:off","--verbosity:0","--d:release"] # Default flags, will be overwritten if others are passed
+var flags: seq[string] = @["--hints:off","--verbosity:0","--d:release","-d:py3_version=3.6","-d:py3_dynamic"] # Default flags, will be overwritten if others are passed
 var hasPlot: bool = false
 var ploth = 480
 var plotw = 640
@@ -190,10 +190,11 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
     hasPlot =  true 
   if hasPlot:
     let plotstart = code.find("#>inlineplot")+"#>inlineplot".len+1
-    let defplot = code[plotstart..code.find('\u000A',plotstart)].split()
-    if defplot.len > 0 :
-      plotw = if defplot[0].isDigit: defplot[0].parseInt else: plotw
-      ploth = if defplot[1].isDigit: defplot[1].parseInt else: ploth
+    # FIXME: indexError
+    # let defplot = code[plotstart..code.find('\u000A',plotstart)-1].split()
+    # if defplot.len > 0 :
+    #   plotw = if defplot[0].isDigit: defplot[0].parseInt else: plotw
+    #   ploth = if defplot[1].isDigit: defplot[1].parseInt else: ploth
 
   let hasFlags = if code.contains("#>flags"): true else: false
   if hasFlags:
