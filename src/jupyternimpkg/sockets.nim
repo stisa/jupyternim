@@ -1,29 +1,73 @@
 import zmq,json, threadpool,os, osproc,strutils, sequtils, base64
-import messaging
+import ./messages
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
-var execcount {.global.} = 0 # Monotonically increasing counter 
+type 
+  Messager = concept s
+    s.socket is TConnection
 
-type Heartbeat* = object
-  socket*: TConnection
-  alive: bool
+  Heartbeat* = object
+    socket*: TConnection
+    alive: bool
 
-type IOPub* = object
-  socket*: TConnection
-  key*:string
-  lastmsg*:WireMessage
+  IOPub* = object
+    socket*: TConnection
+    key*:string
+    lastmsg*:WireMessage
 
-type
-  ShellObj = object
+  Shell* = object
     socket*: TConnection
     key*: string # session key
     pub*: IOPub # keep a reference to pub so we can send status message
-  Shell* = ref ShellObj
+    count*: Natural # Execution counter
+
+  Control* = object
+    socket*: TConnection
+    key*:string
+
+## Nicer zmq ##############################
+proc send_multipart(c:TConnection,msglist:seq[string]) =
+  ## sends a message over the connection as multipart.
+  for i,msg in msglist:
+    var m: TMsg
+    if msg_init(m, msg.len) != 0:
+        zmqError()
+
+    copyMem(msg_data(m), cstring(msg), msg.len)
+    if (i==msglist.len-1):
+      if msg_send(m, c.s, 0) == -1: # 0=>Last message, not SNDMORE
+          zmqError()
+    else:
+      if msg_send(m, c.s, 2) == -1: # 2=>SNDMORE
+        zmqError()
+    
+proc getsockopt* [T] (c: TConnection,opt:T) : cint =
+  # TODO: return a the opt, not an int
+  var size = sizeof(result)
+  if getsockopt(c.s, opt, addr(result), addr(size)) != 0: zmqError()
+
+proc receiveMsg(s:Messager): WireMessage =
+  var raw : seq[string] = @[]
+
+  while raw.len<7: 
+    # TODO: move to a receive_multipart?
+    # TODO: raw.len is not actually fixed!
+    let rc = s.socket.receive()
+    if rc != "": raw&=rc
+
+  decode(raw)
+
+proc sendMsg*(s:Messager, reply_type: string, 
+  content: JsonNode, key: string,parent: varargs[WireMessage]) =
+  let encoded = encode(reply_type, content, key, parent)
+  debug encoded
+  s.socket.send_multipart(encoded)
 
 proc createHB*(ip:string,hbport:BiggestInt): Heartbeat =
   ## Create the heartbeat socket
-  result.socket = zmq.listen("tcp://"&ip&":"& $hbport)
+  result.socket = zmq.listen("tcp://" & ip & ":" & $hbport)
   result.alive = true
+
 proc beat*(hb: Heartbeat) =
   ## Execute the heartbeat loop.
   ## Usually ``spawn``ed to avoid killing the kernel
@@ -42,6 +86,7 @@ proc beat*(hb: Heartbeat) =
     else:
       debug "broke Heartbeat Loop"
       break
+
 proc close*(hb: var Heartbeat) = 
   hb.alive = false
   hb.socket.close()
@@ -49,50 +94,43 @@ proc close*(hb: var Heartbeat) =
 proc createIOPub*(ip:string,port:BiggestInt , key:string): IOPub =
   ## Create the IOPub socket
 # TODO: transport
-  result.socket = zmq.listen("tcp://"&ip&":"& $port,zmq.PUB)
+  result.socket = zmq.listen("tcp://" & ip & ":" & $port, zmq.PUB)
   result.key = key
 
-proc send_state(pub:IOPub,state:string,) {.inline.}=
-  pub.socket.send_wire_msg_no_parent("status", %* { "execution_state": state },pub.key)
+proc sendState(pub:IOPub,state:string,) {.inline.}=
+  pub.sendMsg("status", %* { "execution_state": state },pub.key)
 
 proc receive*(pub:IOPub) =
   ## Receive a message on the IOPub socket
-  let recvdmsg : WireMessage = pub.socket.receive_wire_msg()
+  let recvdmsg : WireMessage = pub.receiveMsg()
   debug "pub received:\n", $recvdmsg
   
 proc createShell*(ip:string,shellport:BiggestInt,key:string,pub:IOPub): Shell =
   ## Create a shell socket
-  new result
-  result.socket = zmq.listen("tcp://"&ip&":"& $shellport, zmq.ROUTER)
+  result.socket = zmq.listen("tcp://" & ip & ":" & $shellport, zmq.ROUTER)
   result.key = key
   result.pub = pub
 
-proc handleKernelInfo(s:Shell,m:WireMessage) =
+proc handleKernelInfo(s:Shell, m:WireMessage) =
   var content : JsonNode
-  spawn s.pub.send_state("busy") # Tell the client we are busy
+  spawn s.pub.sendState("busy") # Tell the client we are busy
   #echo "sending: Kernelinfo sending busy"
   content = %* {
     "protocol_version": "5.0",
-    "ipython_version": [1, 1, 0, ""],
-    "language_version": [0, 15, 0], # TODO get compiler version from the compiler
-    "language": "nim",
     "implementation": "nimpure",
-    "implementation_version": "0.2",
+    "implementation_version": "0.3",
     "language_info": {
       "name": "nim",
-      "version": "0.2",
-      "mimetype": "text/x-nimrod",
+      "version": "0.18.0",
+      "mimetype": "text/x-nim",
       "file_extension": ".nim",
-      "pygments_lexer": "",
-      "codemirror_mode": "nim",
-      "nbconvert_exporter": "",
     },
     "banner": ""
   }
   
-  s.socket.send_wire_msg("kernel_info_reply", m , content, s.key)
+  s.sendMsg("kernel_info_reply", content, s.key, m)
   #echo "sending kernel info reply and idle"
-  spawn s.pub.send_state("idle") #move to thread
+  spawn s.pub.sendState("idle") #move to thread
 
 const inlineplot = "\nimport inim/pyplot\n"
 
@@ -141,10 +179,10 @@ proc flatten(flags:seq[string]):string =
   result = " "
   for f in flags: result.add(f&" ")
 
-proc handleExecute(shell:Shell,msg:WireMessage) =
-  inc execcount
+proc handleExecute(shell: var Shell,msg:WireMessage) =
+  inc shell.count
   
-  spawn shell.pub.send_state("busy") #move to thread
+  spawn shell.pub.sendState("busy") #move to thread
 
   let code = msg.content["code"].str # The code to be executed
   
@@ -187,7 +225,7 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
     if code[tccstart..tccend].len>3: # 3 is arbitrary, C:\ is already 3 chars
       tcc_path&=" -L:"&code[tccstart..tccend]&" "
     debug tcc_path
-  let srcfile = "inimtemp/block" & $execcount & ".nim"
+  let srcfile = "inimtemp/block" & $shell.count & ".nim"
 
   
   if hasPlot: writeFile(srcfile,inlineplot&injectInclude(last_sucess_block)&code&exportWrapper()) # write the block to a temp ``block[num].nim`` file
@@ -197,10 +235,10 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
 
   # Send via iopub the block about to be executed
   var content = %* {
-      "execution_count": execcount,
+      "execution_count": shell.count,
       "code": code,
   }
-  shell.pub.socket.send_wire_msg( "execute_input", msg, content, shell.key)
+  shell.pub.sendMsg( "execute_input", content, shell.key, msg)
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
@@ -212,19 +250,19 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
   if compiler_out.contains("Error:"):
     status = "error"
     std_type = "stderr" 
-  else: last_sucess_block = execcount # This block compiled succesfully
+  else: last_sucess_block = shell.count # This block compiled succesfully
 
   # clean out empty lines from compilation messages
   var compiler_lines = compiler_out.splitLines()
   
   compiler_out = ""
   for ln in compiler_lines : 
-    if ln!="": compiler_out&= (ln & "\n")
+    if ln!="": compiler_out &= (ln & "\n")
 
   content = %*{ "name": std_type, "text": compiler_out }
   
   # Send compiler messages
-  shell.pub.socket.send_wire_msg( "stream", msg, content, shell.key)
+  shell.pub.sendMsg( "stream", content, shell.key, msg)
 
   if status == "error" or status == "abort" :
     content = %* {
@@ -233,44 +271,44 @@ proc handleExecute(shell:Shell,msg:WireMessage) =
       "evalue" : "Error",  # Exception value, as a string
       "traceback" : nil, # traceback frames as strings
     }
-    shell.pub.socket.send_wire_msg( "error", msg, content, shell.key)
+    shell.pub.sendMsg( "error", content, shell.key, msg)
   else:
     # Send results to frontend
     let exec_out = execprocess("inimtemp/compiled.out") # execute compiled block
 
-    let plotfile = "inimtemp/block" & $execcount & ".png"
+    let plotfile = "inimtemp/block" & $shell.count & ".png"
     if hasPlot and existsFile(plotfile):
       let plotdata = readFile(plotfile)
       content = %*{
           "data": {"image/png": encode(plotdata) }, # TODO: handle other mimetypes
           "metadata": %*{ "image/png" : { "width": plotw, "height": ploth } }
       }
-      shell.pub.socket.send_wire_msg( "display_data", msg, content, shell.key)
+      shell.pub.sendMsg( "display_data", content, shell.key, msg)
     elif hasPlot and existsFile(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
 
     content = %*{
-        "execution_count": execcount,
+        "execution_count": shell.count,
         "data": {"text/plain": exec_out }, # TODO: handle other mimetypes
         "metadata": "{}"
     }
-    shell.pub.socket.send_wire_msg( "execute_result", msg, content, shell.key)
+    shell.pub.sendMsg( "execute_result", content, shell.key, msg)
     
   # Tell the frontend execution was ok, or not
   if status == "error" or status == "abort" :
     content = %* {
       "status" : status,
-      "execution_count" : execcount,
+      "execution_count" : shell.count,
     }
   else:
     content = %* {
       "status" : status,
-      "execution_count" : execcount,
+      "execution_count" : shell.count,
       "payload" : {},
       "user_expressions" : {},
     }
-  shell.socket.send_wire_msg("execution_reply", msg , content, shell.key)
+  shell.sendMsg("execution_reply", content, shell.key, msg)
   
-  spawn shell.pub.send_state("idle")
+  spawn shell.pub.sendState("idle")
   #compiler.execute(code)
 
 proc parseNimsuggest(nims:string):tuple[found:bool,data:JsonNode] =
@@ -278,7 +316,7 @@ proc parseNimsuggest(nims:string):tuple[found:bool,data:JsonNode] =
   # http://nim-lang.org/docs/nimsuggest.html#parsing-nimsuggest-output
   discard
 
-proc handleIntrospection(shell:Shell,msg:WireMessage) =
+proc handleIntrospection(shell:Shell, msg:WireMessage) =
   let code = msg.content["code"].str
   let cpos = msg.content["cursor_pos"].num.int
   if code[cpos] == '.' :
@@ -292,7 +330,7 @@ proc handleIntrospection(shell:Shell,msg:WireMessage) =
     "data" : {}, #TODO nimsuggest??
     "metadata" : {},
   }
-  shell.socket.send_wire_msg("inspect_reply", msg , content, shell.key)
+  shell.sendMsg("inspect_reply", content, shell.key, msg)
 
 proc filter*[T](seq1: openarray[T], pred: proc(item: T): bool {.closure.}): seq[T] {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
@@ -302,7 +340,7 @@ proc filter*[T](seq1: openarray[T], pred: proc(item: T): bool {.closure.}): seq[
     if pred(seq1[i]):
       result.add(seq1[i])
 
-proc handleCompletion(shell:Shell, msg:WireMessage) =
+proc handleCompletion(shell: Shell, msg:WireMessage) =
   
   let code : string = msg.content["code"].str
   let cpos : int = msg.content["cursor_pos"].num.int
@@ -379,9 +417,9 @@ proc handleCompletion(shell:Shell, msg:WireMessage) =
     "status" : "ok"
   }
  # debug msg
-  shell.socket.send_wire_msg("complete_reply", msg , content, shell.key)
+  shell.sendMsg("complete_reply", content, shell.key, msg)
 
-proc handleHistory(shell:Shell, msg:WireMessage) =
+proc handleHistory(shell: Shell, msg:WireMessage) =
   debug "Unhandled history"
   var content = %* {
     # A list of 3 tuples, either:
@@ -391,7 +429,8 @@ proc handleHistory(shell:Shell, msg:WireMessage) =
     "history" : [],
   }
 
-proc handle(s:Shell,m:WireMessage) =
+proc handle(s: var Shell, m: WireMessage) =
+  debug m.msg_type
   if m.msg_type == Kernel_Info:
     handleKernelInfo(s,m)
   elif m.msg_type == Execute:
@@ -406,21 +445,17 @@ proc handle(s:Shell,m:WireMessage) =
   else:
     debug "unhandled message: ", m.msg_type
 
-proc receive*(shell:Shell) =
+proc receive*(shell: var Shell) =
   ## Receive a message on the shell socket, decode it and handle operations
-  let recvdmsg : WireMessage = shell.socket.receive_wire_msg()
+  let recvdmsg : WireMessage = shell.receiveMsg()
   debug "sending: ", $recvdmsg.msg_type
   debug recvdmsg.content
   debug "end sending"
   shell.handle(recvdmsg)
 
-type Control* = object
-    socket*: TConnection
-    key*:string
-
 proc createControl*(ip:string,port:BiggestInt,key:string): Control =
   ## Create the control socket
-  result.socket = zmq.listen("tcp://"&ip&":"& $port, zmq.ROUTER)
+  result.socket = zmq.listen("tcp://" & ip & ":" & $port, zmq.ROUTER)
   result.key = key
 
 proc handle(c:Control,m:WireMessage) =
@@ -428,12 +463,12 @@ proc handle(c:Control,m:WireMessage) =
     #var content : JsonNode
     debug "shutdown requested"
     #content = %* { "restart": false }    
-    c.socket.send_wire_msg("shutdown_reply", m , m.content, c.key)
+    c.sendMsg("shutdown_reply", m.content, c.key, m)
     quit()
   #if m.msg_type ==
 
 proc receive*(cont:Control) =
   ## Receive a message on the control socket and handle operations
-  let recvdmsg : WireMessage = cont.socket.receive_wire_msg()
+  let recvdmsg : WireMessage = cont.receiveMsg()
   debug "received: ", $recvdmsg.msg_type
   cont.handle(recvdmsg)

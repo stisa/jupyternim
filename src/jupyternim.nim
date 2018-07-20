@@ -1,7 +1,10 @@
-import private/sockets, private/messaging
-import os,threadpool,zmq
+import ./jupyternimpkg/[sockets, messages]
+import os,threadpool,zmq, json
+from osproc import execProcess
+from ospaths import splitPath
+from strutils import contains, strip
 
-type KernelObj = object
+type Kernel = object
   ## The kernel object. Contains the sockets.
   hb*: Heartbeat # The heartbeat socket object
   shell*: Shell
@@ -9,11 +12,9 @@ type KernelObj = object
   control*: Control
   running: bool
   
-type Kernel = ref KernelObj
 
 proc init( connmsg : ConnectionMessage) : Kernel =
   debug "Initing"
-  new result
   result.hb = createHB(connmsg.ip,connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub( connmsg.ip, connmsg.iopub_port, connmsg.key ) # Initialize iopub 
   result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key, result.pub ) # Initialize shell
@@ -22,7 +23,7 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
   result.running = true
 
-proc shutdown(k: Kernel) {.noconv.}=
+proc shutdown(k: var Kernel) {.noconv.}=
   debug "Shutting Down..."
   k.running = false
   k.hb.close()
@@ -36,7 +37,22 @@ proc shutdown(k: Kernel) {.noconv.}=
 
 let arguments = commandLineParams() # [0] should always be the connection file
 
-assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
+if arguments.len < 1:
+  echo "Installing Jupyter Nim Kernel"
+  var pkgDir = execProcess("nimble path jupyternim").strip()
+  var (h,t) = pkgDir.splitPath()
+  
+  let kernelspec = %*{
+    "argv": [ (if t == "src": h else: pkgDir) / "jupyternim",  "{connection_file}"],
+    "display_name": "Nim",
+    "language": "nim",
+    "file_extension": ".nim" }
+
+  writeFile(pkgDir / "jupyternimspec"/"kernel.json", $kernelspec)
+  echo execProcess(r"jupyter-kernelspec install " & pkgDir / "jupyternimspec" & " --user") # install the spec
+  echo "Finished Installing, try running `jupyter notebook` and select New>Nim"
+  quit(0)
+#assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
 
 var connmsg = arguments[0].parseConnMsg()
 

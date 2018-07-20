@@ -1,4 +1,4 @@
-import json, strutils, zmq,times, random, hmac, nimSHA2,md5
+import json, strutils, times, random, hmac, nimSHA2, md5
 
 type WireType * = enum
   Unknown  = 0
@@ -14,7 +14,7 @@ type WireType * = enum
   Status = 9
   Shutdown = 10
 
-  Comm_Open = 21 # note defined in spec?
+  Comm_Open = 21 # not defined in spec?
 
 type ConnectionMessage * = object 
   ## The connection message the notebook sends when starting
@@ -24,32 +24,10 @@ type ConnectionMessage * = object
   hb_port*,iopub_port*,shell_port*,stdin_port*,control_port*: int
   kernel_name*: string
 
-## Nicer zmq ##############################
-proc send_multipart(c:TConnection,msglist:seq[string]) =
-  ## sends a message over the connection as multipart.
-  for i,msg in msglist:
-    var m: TMsg
-    if msg_init(m, msg.len) != 0:
-        zmqError()
-
-    copyMem(msg_data(m), cstring(msg), msg.len)
-    if (i==msglist.len-1):
-      if msg_send(m, c.s, 0) == -1: # 0=>Last message, not SNDMORE
-          zmqError()
-    else:
-      if msg_send(m, c.s, 2) == -1: # 2=>SNDMORE
-        zmqError()
-    
-proc getsockopt* [T] (c: TConnection,opt:T) : cint =
-  # TODO: return a the opt, not an int
-  var size = sizeof(result)
-  if getsockopt(c.s, opt, addr(result), addr(size)) != 0: zmqError()
-
-############################################
 template debug*(str:varargs[string, `$`]) =
   when not defined(release):
-   let inst = instantiationinfo() 
-   echo "["& $inst.filename & ":" & $inst.line & "] ", str.join(" ")
+    let inst = instantiationinfo() 
+    echo "[" & $inst.filename & ":" & $inst.line & "] ", str.join(" ")
 
 const validx = [ 'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ]
 const validy = [ '8', '9', '0', 'B' ]
@@ -58,8 +36,8 @@ proc genUUID(nb,upper:bool = true):string =
   ## If ``nb`` is false, the uuid is compatible with IPython console.
   result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
   for c in result.mitems:
-    if c == 'y' : c = random(validy)
-    elif c == 'x': c = random(validx)
+    if c == 'y' : c = rand(validy)
+    elif c == 'x': c = rand(validx)
   if not upper: result = result.toLowerAscii
 
 proc sign(msg:string,key:string):string =
@@ -80,15 +58,15 @@ proc parseConnMsg*(connfile:string):ConnectionMessage =
   # transport method??
 
 proc `$`*(cm:ConnectionMessage):string=
-  result = "ip: "& cm.ip &
-            "\nsignature_scheme: "&cm.signature_scheme&
-            "\nkey: "&cm.key&
-            "\nhb_port: " & $cm.hb_port&
-            "\niopub_port: "& $cm.iopub_port&
-            "\nshell_port: "& $cm.shell_port&
-            "\nstdin_port: "& $cm.stdin_port&
-            "\ncontrol_port: "& $cm.control_port&
-            "\nkernel_name: "&cm.kernel_name
+  result = "ip: " & cm.ip &
+            "\nsignature_scheme: " & cm.signature_scheme &
+            "\nkey: " & cm.key &
+            "\nhb_port: " & $cm.hb_port &
+            "\niopub_port: " & $cm.iopub_port &
+            "\nshell_port: " & $cm.shell_port &
+            "\nstdin_port: " & $cm.stdin_port &
+            "\ncontrol_port: " & $cm.control_port &
+            "\nkernel_name: " & cm.kernel_name
 
 type WireMessage * = object
   msg_type*: WireType # Convenience, this is not part of the spec
@@ -99,14 +77,11 @@ type WireMessage * = object
   parent_header*: JsonNode
   metadata*: JsonNode
   content*: JsonNode
+  extra*: string # Extra raw data
 
-proc receive_wire_msg*(c:TConnection):WireMessage =
-  ## Receive a wire message and decoedes it into a json object,
-  var raw : seq[string] = @[]
-
-  while raw.len<7: # TODO: move to a receive_multipart?
-    let rc = c.receive()
-    if rc != "": raw&=rc
+#proc receive_wire_msg*(c:TConnection):WireMessage =
+proc decode*(raw:openarray[string]): WireMessage =
+  ## decoedes a wire message as a seq of string blobs into a WireMessage object
 
   result.ident = raw[0]
 
@@ -141,14 +116,14 @@ proc receive_wire_msg*(c:TConnection):WireMessage =
         debug "Unknown WireMsg End"
 
     else:
-      debug "NO WIRE MESSAGE TYPE???????????????"
+      debug "NO WIRE MESSAGE TYPE?"
 
 proc getISOstr():string = getDateStr()&'T'&getClockStr()
     
-proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content:JsonNode,key:string) =
+proc encode*(reply_type:string, content:JsonNode,key:string, parent:varargs[WireMessage]): seq[string] =
   ## Encode a message following wire spec and sends using the connection specified
 
-  var header: JsonNode = %* {
+  let header: JsonNode = %* {
     "msg_id" : genUUID(), # typically UUID, must be unique per message
     "username" : "kernel",
     "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK?
@@ -157,41 +132,24 @@ proc send_wire_msg*(c:TConnection, reply_type:string, parent:WireMessage,content
     "version" : "5.0", # the message protocol version
   }
 
-  var metadata : JSonNode = %* { }
+  var 
+    metadata : JSonNode = %* { }
+    maybeParent : WireMessage
+  debug "the par lenght is", parent.len
+  if parent.len == 0:
+    maybeParent.ident = "kernel"
+    maybeParent.header = %*{}
+  else:
+    maybeParent = parent[0]
 
-  var reply = @[parent.ident] # Add ident
+  result = @[maybeParent.ident] # Add ident
   
-  reply &= "<IDS|MSG>" # add separator
+  result &= "<IDS|MSG>" # add separator
   
-  let secondpartreply = $header & $parent.header & $metadata & $content
-  reply &= sign(secondpartreply,key) # add signature TODO
-  reply &= $header 
-  reply &= $parent.header 
-  reply &= $metadata 
-  reply &= $content
-   
-  c.send_multipart(reply)
-proc send_wire_msg_no_parent*(c:TConnection, reply_type:string, content:JsonNode,key:string) =
-  ## Encode and sends a message that doesn't have a parent message
-  var header: JsonNode = %* {
-    "msg_id" : genUUID(), # typically UUID, must be unique per message
-    "username" : "kernel",
-    "session" : key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK. parent.header["session"], # typically UUID, should be unique per session
-    "date": getISOstr(), # ISO 8601 timestamp for when the message is created
-    "msg_type" : reply_type,
-    "version" : "5.0", # the message protocol version
-  }
-
-  var metadata : JSonNode = %* { }
-
-  var reply = @["kernel"] # Add ident
-  reply &= "<IDS|MSG>" # add separator
+  let secondpartreply = $header & $maybeParent.header & $metadata & $content
+  result &= sign(secondpartreply,key) # add signature TODO
+  result &= $header 
+  result &= $maybeParent.header 
+  result &= $metadata 
+  result &= $content
   
-  let secondpartreply = $header & $ %*{} &  $metadata & $content
-  reply &= sign(secondpartreply,key) # add signature TODO
-  reply &= $header #3
-  reply &= $ %* {}
-  reply &= $metadata
-  reply &= $content
-
-  c.send_multipart(reply)

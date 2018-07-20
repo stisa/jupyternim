@@ -1,7 +1,6 @@
 .vscode/
 private/nimcache/
 nimcache/
-src/
 refzmq.nim
 fzmq.nim
 *.exe
@@ -9,3 +8,6 @@ nimsuggest.log
 inimtemp
 .ipynb_checkpoints
 *.dll
+old/
+src/jupyternimspec/kernel.json
+inim/

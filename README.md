@@ -1,4 +1,4 @@
-INim
+Jupyter Nim
 ====
 
 This is an experimental nim-only ( well apart from zmq ) version of a kernel for [jupyter notebooks](http://jupyter.org/), reimplementing all machinery ( messaging, sockets, execution... ).  
@@ -6,7 +6,7 @@ There's a version reusing the python machinery here: [jupyter-nim-kernel](https:
 I'm going to port features from there to here ( as time permits ).  
 Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`  
 ~~The plotting lib used is [graph](https://github.com/stisa/graph). Other plotting libs may be considered, and as always, PRs are welcome!~~
-A simple wrapper around `matplotlib` is provided [here](inim/pyplot.nim). **Only python 3 is supported for now**
+A simple wrapper around `matplotlib` is provided [here](jupyternim/pyplot.nim). **Only python 3 is supported for now**
   
 Look at [example-notebook](examples/example-notebook.ipynb) for some examples.  
 
@@ -16,27 +16,21 @@ Prereqs
 -------
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
 - a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
-- a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.0.4 . **It must be in PATH or the kernel won't run**.
-- a `matplotlib` installation, only if you want to use the basic wrapper provided [here](inim/pyplot.nim) ( with anaconda, just `conda install matplotlib` and you're set )
-- ~~**OPTIONAL** My toy [Graph lib](https://github.com/stisa/graph). I will add it to nimble when I flesh it out more.~~
+- a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.2. **It must be in PATH or the kernel won't run**.
+- a `matplotlib` installation, only if you want to use the basic wrapper provided [here](jupyternim/pyplot.nim) ( with anaconda, just `conda install matplotlib` and you're set )
 
 Running: 
 ---------
-The kernel should be automatically compiled and registered with jupyter just by doing `nimble install inim`
-
+The kernel should be automatically compiled by doing `nimble install jupyternim` ( or nimble install https://github.com/stisa/INim if it's not in nimble yet).
+Now you can run `jupyternim` to register the kernel with jupyter (you can run `jupyternim` if you have `.nimble/bin` in your path, or run it directly from
+`<nimblepath>/pkgs/jupyternim-####`)
 Alternatively, try one of the following:
 
-- clone this repo: `git clone https://github.com/stisa/Inim`
-- then go into the cloned dir `cd INim`
-- and install with nimble `nimble install`
-
-or
-
-- compile the kernel binary: `nim c --threads:on nimkernel.nim`
-- in [nim-spec/kernel.json](https://github.com/stisa/jupyter-nim-kernel/blob/nim-based/nim-spec/kernel.json) change 
-`"C:\\<blah>\\nimkernel"` to the path of `nimkernel` executable
-- add kernel spec to jupyter : `jupyter-kernelspec install nim-spec --user`
-- run `jupyter-notebook` and select `new>Nim` 
+- clone this repo: `git clone https://github.com/stisa/jupyternim`
+- then go into the cloned dir `cd jupyternim`
+- compile with `nimble build`
+- run `jupyternim`to register the kernel
+- run `jupyter notebook`
 
 Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically linked, so it needs to be installed **and added to path**  
 
@@ -66,7 +60,7 @@ test defined
 
 **inlining a plot**
 `#>inlineplot <w> <h>`
-Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](inim/pyplot.nim)
+Enable plotting. This uses a simplified wrapper around matplotlib, see [pyplot](jupyternim/pyplot.nim)
 Example:
 ```nim
 #>inlineplot 320 240
@@ -99,6 +93,7 @@ TODO
 - Move plot setup outside `handleExecute`
 - Do we want to distribute libzmq?
 - Why does pyplot sigsegv ?
+- Use nim plotly
 
 References
 ----------
@@ -114,17 +109,17 @@ General structure
 ### nimkernel
 Handles init, start, stop of the various loops. 
 
-### messaging
-Handles message specifications exposing low level procs to send, receive, decode, encode messages
+### messages
+Handles message specifications exposing low level procs to decode, encode messages
 
 ### sockets
 Defines sockets types , how they are created, how their loops work, how they send and receive messages
 
-### inim/pyplot
+### jupyternim/pyplot
 A basic wrapper around matplotlib, 2d plot, labels, title are in.
 Example:
 ```nim
-import inim/pyplot
+import jupyternim/pyplot
 
 show: # a template used to init and close the python interpreter
   plot([0.0,1,2],[0.0,1,2],"r","--","o","y=x") # Show a y=x line, red ("r"), dashed ("--"), with circle markers ("o"), and name "y=x".
