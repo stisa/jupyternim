@@ -81,11 +81,7 @@ proc beat*(hb: Heartbeat) =
       debug "broke Heartbeat Loop"
       break
       
-    if s!=nil: 
-      hb.socket.send(s) # Echo back what we read
-    else:
-      debug "broke Heartbeat Loop"
-      break
+    hb.socket.send(s) # Echo back what we read
 
 proc close*(hb: var Heartbeat) = 
   hb.alive = false
