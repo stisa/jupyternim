@@ -28,7 +28,6 @@ jobs:
       run: |
         export PATH=$HOME/.nimble/bin:$PATH
         echo $PATH
-        ls -al $HOME/.nimble/bin
         nimble build -y
         mkdir -p rel
         mv jupyternim rel/
@@ -64,7 +63,6 @@ jobs:
       run: |
         export PATH=$HOME/.nimble/bin:$PATH
         echo $PATH
-        ls -al $HOME/.nimble/bin
         nimble build -y
         mkdir -p rel
         mv jupyternim rel/
