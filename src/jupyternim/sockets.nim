@@ -195,7 +195,7 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
   let hasFlags = if code.contains("#>flags"): true else: false
   if hasFlags:
     let flagstart = code.find("#>flags")+"#>flags".len+1
-    let nwline = code.find('\u000A',flagstart)
+    let nwline = code.find("\u000A",flagstart)
     let flagend = if nwline != -1: nwline else: code.len
     flags = code[flagstart..flagend].split()
   
@@ -217,7 +217,7 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
     use_tcc = true
     tcc_path = " --cc:tcc"
     let tccstart = code.find("#>tinycc")+"#>tinycc".len+1
-    let nwline = code.find('\u000A',tccstart)
+    let nwline = code.find("\u000A",tccstart)
     let tccend = if nwline != -1: nwline else: code.len
     if code[tccstart..tccend].len>3: # 3 is arbitrary, C:\ is already 3 chars
       tcc_path&=" -L:"&code[tccstart..tccend]&" "
