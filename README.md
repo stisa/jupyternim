@@ -21,13 +21,14 @@ Prereqs
 
 Running: 
 ---------
-The kernel should be automatically compiled by doing `nimble install jupyternim` ( or nimble install https://github.com/stisa/INim if it's not in nimble yet).
+The kernel should be automatically compiled by doing `nimble install jupyternim` ( or `nimble install https://github.com/stisa/jupyternim` if it's not in nimble yet).
 Now you can run `jupyternim` to register the kernel with jupyter (you can run `jupyternim` if you have `.nimble/bin` in your path, or run it directly from
 `<nimblepath>/pkgs/jupyternim-####`)
-Alternatively, try one of the following:
+Alternatively, the following:
 
 - clone this repo: `git clone https://github.com/stisa/jupyternim`
 - then go into the cloned dir `cd jupyternim`
+- register to nimble with `nimble install`
 - compile with `nimble build`
 - run `jupyternim`to register the kernel
 - run `jupyter notebook`

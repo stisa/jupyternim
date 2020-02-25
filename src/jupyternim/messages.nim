@@ -36,8 +36,8 @@ proc genUUID(nb,upper:bool = true):string =
   ## If ``nb`` is false, the uuid is compatible with IPython console.
   result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
   for c in result.mitems:
-    if c == 'y' : c = rand(validy)
-    elif c == 'x': c = rand(validx)
+    if c == 'y' : c = sample(validy)
+    elif c == 'x': c = sample(validx)
   if not upper: result = result.toLowerAscii
 
 proc sign(msg:string,key:string):string =

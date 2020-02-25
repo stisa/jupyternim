@@ -239,7 +239,11 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
 
   # Compile and send compilation messages to stdout
   # TODO: handle flags
-  var compiler_out = execProcess("nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled.out "&srcfile) # compile block
+  
+  when defined(Windows):
+    var compiler_out = execProcess("nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled.exe "&srcfile) # compile block
+  else:
+    var compiler_out = execProcess("nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled "&srcfile) # compile block
   debug "nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled.out "&srcfile 
 
   var status = "ok" # OR 'error' OR 'abort'
@@ -271,8 +275,11 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
     shell.pub.sendMsg( "error", content, shell.key, msg)
   else:
     # Send results to frontend
-    let exec_out = execprocess("inimtemp/compiled.out") # execute compiled block
-
+    when defined(windows):
+      let exec_out = execprocess("inimtemp/compiled.exe") # execute compiled block
+    else:
+      let exec_out = execprocess("inimtemp/compiled") # execute compiled block
+    
     let plotfile = "inimtemp/block" & $shell.count & ".png"
     if hasPlot and existsFile(plotfile):
       let plotdata = readFile(plotfile)
