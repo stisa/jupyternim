@@ -36,38 +36,3 @@ jobs:
       with:
         name: release
         path: rel
-  build_v0_15_0:
-    name: v_0_19_0
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Cache choosenim
-      id: cache-choosenim
-      uses: actions/cache@v1
-      with:
-        path: ~/.choosenim
-        key: ${{ runner.os }}-choosenim-0.19.0
-    - name: Cache nimble
-      id: cache-nimble
-      uses: actions/cache@v1
-      with:
-        path: ~/.nimble
-        key: ${{ runner.os }}-nimble-0.19.0
-    - name: Install Nim
-      if: steps.cache-choosenim.outputs.cache-hit != 'true' || steps.cache-nimble.outputs.cache-hit != 'true'
-      run: |
-        export CHOOSENIM_CHOOSE_VERSION="0.19.0"
-        curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
-        sh init.sh -y
-    - name: Build project
-      run: |
-        export PATH=$HOME/.nimble/bin:$PATH
-        echo $PATH
-        nimble build -y
-        mkdir -p rel
-        mv jupyternim rel/
-    - name: Upload artifact
-      uses: actions/upload-artifact@master
-      with:
-        name: release
-        path: rel
