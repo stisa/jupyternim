@@ -41,11 +41,6 @@ proc send_multipart(c:TConnection,msglist:seq[string]) =
       if msg_send(m, c.s, 2) == -1: # 2=>SNDMORE
         zmqError()
     
-proc getsockopt* [T] (c: TConnection,opt:T) : cint =
-  # TODO: return a the opt, not an int
-  var size = sizeof(result)
-  if getsockopt(c.s, opt, addr(result), addr(size)) != 0: zmqError()
-
 proc receiveMsg(s:Messager): WireMessage =
   var raw : seq[string] = @[]
 
