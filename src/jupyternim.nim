@@ -1,7 +1,6 @@
 import ./jupyternim/[sockets, messages]
 import os,threadpool,zmq, json
 from osproc import execProcess
-from ospaths import splitPath
 from strutils import contains, strip
 
 type Kernel = object
@@ -69,8 +68,8 @@ spawn kernel.hb.beat()
 
 debug "Starting to poll..."
 while kernel.running:
-  if kernel.control.socket.getsockopt(EVENTS) == 3 : kernel.control.receive()
-  elif kernel.shell.socket.getsockopt(EVENTS) == 3 : kernel.shell.receive()
-  elif kernel.pub.socket.getsockopt(EVENTS) == 3 : kernel.pub.receive()
+  if getsockopt[int](kernel.control.socket,EVENTS) == 3 : kernel.control.receive()
+  elif getsockopt[int](kernel.shell.socket,EVENTS) == 3 : kernel.shell.receive()
+  elif getsockopt[int](kernel.pub.socket,EVENTS) == 3 : kernel.pub.receive()
 
   else : sleep(100) # wait a bit before trying again
