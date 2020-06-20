@@ -123,7 +123,7 @@ proc handleKernelInfo(s:Shell, m:WireMessage) =
   #echo "sending kernel info reply and idle"
   spawn s.pub.sendState("idle") #move to thread
 
-const inlineplot = "\nimport jupyternim/pyplot\n"
+const inlineplot = "\nimport jupyternimpkg/pyplot\n"
 
 ## Ugly way of injecting
 proc injectInclude*(blocknum:int):string = 

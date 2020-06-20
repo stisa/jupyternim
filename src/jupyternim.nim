@@ -1,4 +1,4 @@
-import ./jupyternim/[sockets, messages]
+import ./jupyternimpkg/[sockets, messages]
 import os,threadpool,zmq, json
 from osproc import execProcess
 from strutils import contains, strip
