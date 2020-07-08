@@ -1,4 +1,4 @@
-import zmq,json, threadpool,os, osproc,strutils, sequtils, base64
+import zmq, json, threadpool, os, osproc, strutils, base64
 import ./messages
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
@@ -196,7 +196,7 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
   
   debug "With flags:",flags.flatten
   
-  if code.contains("#>clear all") and existsDir("inimtemp"):
+  if code.contains("#>clear all") and dirExists("inimtemp"):
     debug "Cleaning up..."
     flags = @["--hints:off","--verbosity:0","--d:release"]
     hasPlot = false
@@ -276,14 +276,14 @@ proc handleExecute(shell: var Shell,msg:WireMessage) =
       let exec_out = execprocess("inimtemp/compiled") # execute compiled block
     
     let plotfile = "inimtemp/block" & $shell.count & ".png"
-    if hasPlot and existsFile(plotfile):
+    if hasPlot and fileExists(plotfile):
       let plotdata = readFile(plotfile)
       content = %*{
           "data": {"image/png": encode(plotdata) }, # TODO: handle other mimetypes
           "metadata": %*{ "image/png" : { "width": plotw, "height": ploth } }
       }
       shell.pub.sendMsg( "display_data", content, shell.key, msg)
-    elif hasPlot and existsFile(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
+    elif hasPlot and fileExists(plotfile)==false : debug("plotting: ",plotfile," - no such file, false positive?")
 
     content = %*{
         "execution_count": shell.count,

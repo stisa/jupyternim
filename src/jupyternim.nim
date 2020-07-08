@@ -1,5 +1,5 @@
 import ./jupyternimpkg/[sockets, messages]
-import os,threadpool,zmq, json
+import os,threadpool,zmq, json, std/exitprocs
 from osproc import execProcess
 from strutils import contains, strip
 
@@ -19,7 +19,7 @@ proc init( connmsg : ConnectionMessage) : Kernel =
   result.shell = createShell( connmsg.ip, connmsg.shell_port, connmsg.key, result.pub ) # Initialize shell
   result.control = createControl( connmsg.ip, connmsg.control_port, connmsg.key ) # Initialize iopub 
   
-  if not existsDir("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
+  if not dirExists("inimtemp"): createDir("inimtemp") # Ensure temp folder exists 
   result.running = true
 
 proc shutdown(k: var Kernel) {.noconv.}=
@@ -29,7 +29,7 @@ proc shutdown(k: var Kernel) {.noconv.}=
   k.pub.socket.close()
   k.shell.socket.close()
   k.control.socket.close()
-  if existsDir("inimtemp"): 
+  if dirExists("inimtemp"): 
     debug "Removing inimtemp..."
     removeDir("inimtemp") # Remove temp dir on exit
 
@@ -57,7 +57,7 @@ var connmsg = arguments[0].parseConnMsg()
 
 var kernel :Kernel = connmsg.init()
 
-addQuitProc(proc(){.noconv.} = kernel.shutdown() )
+addExitProc(proc(){.noconv.} = kernel.shutdown() )
 
 setControlCHook(proc(){.noconv.} =
   kernel.shutdown()
