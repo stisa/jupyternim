@@ -108,12 +108,12 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
   spawn s.pub.sendState("busy") # Tell the client we are busy
   #echo "sending: Kernelinfo sending busy"
   content = %* {
-    "protocol_version": "5.0",
-    "implementation": "nimpure",
-    "implementation_version": "0.3",
+    "protocol_version": "5.3",
+    "implementation": "nim",
+    "implementation_version": "0.4",
     "language_info": {
       "name": "nim",
-      "version": "0.18.0",
+      "version": NimVersion,
       "mimetype": "text/x-nim",
       "file_extension": ".nim",
     },
@@ -284,6 +284,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       content = %*{
           "data": {"image/png": encode(plotdata)}, # TODO: handle other mimetypes
         "metadata": %*{"image/png": {"width": plotw, "height": ploth}}
+        #"transient": {} #new in 5.1, unused here
       }
       shell.pub.sendMsg("display_data", content, shell.key, msg)
     elif hasPlot and fileExists(plotfile) == false: debug("plotting: ",

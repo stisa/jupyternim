@@ -56,7 +56,9 @@ proc parseConnMsg*(connfile: string): ConnectionMessage =
   result.shell_port = parsedconn["shell_port"].num.int
   result.stdin_port = parsedconn["stdin_port"].num.int
   result.control_port = parsedconn["control_port"].num.int
-  result.kernel_name = parsedconn["kernel_name"].str
+  if parsedconn.hasKey("kernel_name"):
+    result.kernel_name = parsedconn["kernel_name"].str
+  else: result.kernel_name = "N/A?"
   # transport method??
 
 proc `$`*(cm: ConnectionMessage): string =
@@ -106,7 +108,7 @@ proc decode*(raw: openarray[string]): WireMessage =
       of "complete_request": result.msg_type = WireType.Completion
       of "history_request": result.msg_type = WireType.History
       of "is_complete_request": result.msg_type = WireType.Complete
-      #of "comm_info_request": result.msg_type = WireType.Comm_info <- in spec 5.1
+      of "comm_info_request": result.msg_type = WireType.Comm_info
       of "comm_open":
         result.msg_type = WireType.Comm_Open
         debug "unused msg: comm_open"
@@ -131,7 +133,7 @@ proc encode*(reply_type: string, content: JsonNode, key: string,
     "session": key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK?
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
     "msg_type": reply_type,
-    "version": "5.0",    # the message protocol version
+    "version": "5.3",    # the message protocol version
   }
 
   var
