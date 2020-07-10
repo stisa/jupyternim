@@ -11,7 +11,7 @@ requires "nim >= 1.0.0"
 requires "zmq >= 0.3.1"
 requires "hmac"
 requires "nimSHA2"
-requires "python3"
+requires "python3@#head"
 # Optional: graph
 
 bin = @["jupyternim"]

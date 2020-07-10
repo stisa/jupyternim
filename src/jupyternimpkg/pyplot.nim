@@ -1,6 +1,6 @@
 import python3 #TODO python2
 
-from os import splitfile,changeFileExt
+from os import splitfile,changeFileExt, getHomeDir, dirExists, `/`, createDir
 import strutils
 #[
 ================   ===============================
@@ -47,18 +47,15 @@ character          description
 proc initPlot*()= 
   initialize()
   discard runSimpleString("import matplotlib\nmatplotlib.use('pdf')\nfrom matplotlib import pyplot as pp\n") # load pyplot
-  
-proc `$`[T](a:openarray[T]):string =
-  result = "["
-  for e in 0..<a.len:
-    result.add($a[e]&',')
-    if e == a.len-1:
-      result.add($a[e])
-  result.add("]")
 
 template endPlot*():untyped= 
+  discard runSimpleString("""
+import os
+if not os.path.exists(os.path.expanduser("~")+'/inimtemp'):
+    os.makedirs(os.path.expanduser("~")+'/inimtemp')
+""")
   let pngname = instantiationInfo(0).filename
-  discard runSimpleString("pp.savefig(\"inimtemp/"&pngname.changeFileExt(".png")&"\")\npp.close()")
+  discard runSimpleString("pp.savefig(os.path.expanduser(\"~\")+'/inimtemp/'+\"" & pngname.changeFileExt(".png") & "\")\npp.close()")
 #  finalize()
 
 proc plot*[T](x,y:openarray[T],lncolor:string="r",lnstyle:string="-",lnmarker:string="",label:string="")=
