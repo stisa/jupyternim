@@ -1,4 +1,4 @@
-import json, strutils, times, random, hmac, nimSHA2, md5
+import json, utils, md5
 
 type WireType* = enum
   Unknown = 0
@@ -19,32 +19,11 @@ type WireType* = enum
 type ConnectionMessage* = object
   ## The connection message the notebook sends when starting
   ip*: string
+  transport*: string
   signature_scheme*: string
   key*: string
   hb_port*, iopub_port*, shell_port*, stdin_port*, control_port*: int
   kernel_name*: string
-
-template debug*(str: varargs[string, `$`]) =
-  when not defined(release):
-    let inst = instantiationinfo()
-    echo "[" & $inst.filename & ":" & $inst.line & "] ", str.join(" ")
-
-const validx = ['A', 'B', 'C', 'D', 'E', 'F', 
-                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-const validy = ['8', '9', '0', 'B']
-
-proc genUUID(nb, upper: bool = true): string =
-  ## Generate a uuid version 4.
-  ## If ``nb`` is false, the uuid is compatible with IPython console.
-  result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-  for c in result.mitems:
-    if c == 'y': c = sample(validy)
-    elif c == 'x': c = sample(validx)
-  if not upper: result = result.toLowerAscii
-
-proc sign(msg: string, key: string): string =
-  ##Sign a message with a secure signature.
-  result = hmac.hmac_sha256(key, msg).hex.toLowerAscii
 
 proc parseConnMsg*(connfile: string): ConnectionMessage =
   let parsedconn = parseFile(connfile)
@@ -56,6 +35,7 @@ proc parseConnMsg*(connfile: string): ConnectionMessage =
   result.shell_port = parsedconn["shell_port"].num.int
   result.stdin_port = parsedconn["stdin_port"].num.int
   result.control_port = parsedconn["control_port"].num.int
+  result.transport = parsedconn["transport"].str
   if parsedconn.hasKey("kernel_name"):
     result.kernel_name = parsedconn["kernel_name"].str
   else: result.kernel_name = "N/A?"
@@ -70,11 +50,13 @@ proc `$`*(cm: ConnectionMessage): string =
             "\nshell_port: " & $cm.shell_port &
             "\nstdin_port: " & $cm.stdin_port &
             "\ncontrol_port: " & $cm.control_port &
+            "\ntransport: " & $cm.transport &
             "\nkernel_name: " & cm.kernel_name
 
 type WireMessage* = object
   msg_type*: WireType # Convenience, this is not part of the spec
   ## Describes a raw message as passed by Jupyter/Ipython
+  ## Follows https://jupyter-client.readthedocs.io/en/stable/messaging.html#the-wire-protocol
   ident*: string      # uuid
   signature*: string  # hmac signature
   header*: JsonNode
@@ -91,7 +73,7 @@ proc decode*(raw: openarray[string]): WireMessage =
 
   if(raw[1] != "<IDS|MSG>"):
     debug "proc receive wire msg: Malformed message?? Follows:"
-    debug raw
+    debug raw #TODO: make this an assert?
   else:
     result.signature = raw[2]
     result.header = parseJson(raw[3])
@@ -121,32 +103,47 @@ proc decode*(raw: openarray[string]): WireMessage =
     else:
       debug "NO WIRE MESSAGE TYPE?"
 
-proc getISOstr(): string = getDateStr()&'T'&getClockStr()
+
 
 proc encode*(reply_type: string, content: JsonNode, key: string,
     parent: varargs[WireMessage]): seq[string] =
   ## Encode a message following wire spec and sends using the connection specified
-
+  let iopubTopics = [ #TODO: move to an enum?
+    "execute_result",
+    "stream",
+    "display_data",
+    "update_display_data",
+    "execute_input",
+    "error",
+    "status",
+    "clear_output",
+    "debug_event"
+  ]
   let header: JsonNode = %* {
     "msg_id": genUUID(), # typically UUID, must be unique per message
     "username": "kernel",
     "session": key.getmd5(), # using md5 of key as we passed it here already, SECURITY RISK?
     "date": getISOstr(), # ISO 8601 timestamp for when the message is created
-    "msg_type": reply_type,
+    "msg_type": reply_type, # TODO: use an enum?
     "version": "5.3",    # the message protocol version
   }
 
   var
     metadata: JSonNode = %* {}
     maybeParent: WireMessage
-  debug "the par lenght is", parent.len
+  #debug "parent length:", parent.len
   if parent.len == 0:
+    # TODO: document this
     maybeParent.ident = "kernel"
     maybeParent.header = %*{}
   else:
     maybeParent = parent[0]
 
-  result = @[maybeParent.ident] # Add ident
+  if  reply_type in iopubTopics: 
+    # FIXME: IOPUB has special treatment RE: idents
+    result = @[reply_type]
+  else:
+    result = @[maybeParent.ident] # Add ident
 
   result &= "<IDS|MSG>" # add separator
 

@@ -1,5 +1,5 @@
 import zmq, json, threadpool, os, osproc, strutils, base64
-import ./messages
+import ./messages, ./utils
 #import compiler/nimeval as compiler # We can actually use the nim compiler at runtime! Woho
 
 type
@@ -44,7 +44,7 @@ proc send_multipart(c: TConnection, msglist: seq[string]) =
 proc receiveMsg(s: Messager): WireMessage =
   var raw: seq[string] = @[]
 
-  while raw.len < 7:
+  while raw.len < 7: #TODO: document why 7
     # TODO: move to a receive_multipart?
     # TODO: raw.len is not actually fixed!
     let rc = s.socket.receive()
@@ -55,7 +55,9 @@ proc receiveMsg(s: Messager): WireMessage =
 proc sendMsg*(s: Messager, reply_type: string,
   content: JsonNode, key: string, parent: varargs[WireMessage]) =
   let encoded = encode(reply_type, content, key, parent)
+  debug "encoded ", reply_type
   debug encoded
+  debug "end encoded ", reply_type
   s.socket.send_multipart(encoded)
 
 proc createHB*(ip: string, hbport: BiggestInt): Heartbeat =
@@ -65,8 +67,7 @@ proc createHB*(ip: string, hbport: BiggestInt): Heartbeat =
 
 proc beat*(hb: Heartbeat) =
   ## Execute the heartbeat loop.
-  ## Usually ``spawn``ed to avoid killing the kernel
-  ## when it's busy
+  ## Usually ``spawn``ed to avoid killing the kernel when it's busy
   debug "starting hb loop..."
   while hb.alive:
     var s: string
@@ -440,7 +441,7 @@ proc handleHistory(shell: Shell, msg: WireMessage) =
   }
 
 proc handle(s: var Shell, m: WireMessage) =
-  debug m.msg_type
+  debug "shell: handle ", m.msg_type
   if m.msg_type == Kernel_Info:
     handleKernelInfo(s, m)
   elif m.msg_type == Execute:
@@ -451,16 +452,15 @@ proc handle(s: var Shell, m: WireMessage) =
   elif m.msg_type == Introspection: handleIntrospection(s, m)
   elif m.msg_type == Completion: handleCompletion(s, m)
   elif m.msg_type == History: handleHistory(s, m)
-  elif m.msg_type == Complete: discard # TODO
   else:
     debug "unhandled message: ", m.msg_type
 
 proc receive*(shell: var Shell) =
   ## Receive a message on the shell socket, decode it and handle operations
   let recvdmsg: WireMessage = shell.receiveMsg()
-  debug "sending: ", $recvdmsg.msg_type
+  debug "shell: ", $recvdmsg.msg_type
   debug recvdmsg.content
-  debug "end sending"
+  debug "end shell"
   shell.handle(recvdmsg)
 
 proc createControl*(ip: string, port: BiggestInt, key: string): Control =

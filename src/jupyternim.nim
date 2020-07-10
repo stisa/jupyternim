@@ -1,4 +1,4 @@
-import ./jupyternimpkg/[sockets, messages]
+import ./jupyternimpkg/[sockets, messages, utils]
 import os, threadpool, zmq, json, std/exitprocs
 from osproc import execProcess
 from strutils import contains, strip
@@ -12,8 +12,10 @@ type Kernel = object
   running: bool
 
 
-proc init(connmsg: ConnectionMessage): Kernel =
+proc initKernel(connfile: string): Kernel =
   debug "Initing"
+  let connmsg = connfile.parseConnMsg()
+
   result.hb = createHB(connmsg.ip, connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub(connmsg.ip, connmsg.iopub_port, connmsg.key) # Initialize iopub
   result.shell = createShell(connmsg.ip, connmsg.shell_port, connmsg.key,
@@ -21,7 +23,10 @@ proc init(connmsg: ConnectionMessage): Kernel =
   result.control = createControl(connmsg.ip, connmsg.control_port,
       connmsg.key) # Initialize iopub
 
-  if not dirExists(getHomeDir() / "inimtemp"): createDir(getHomeDir() / "inimtemp") # Ensure temp folder exists
+  if not dirExists(getHomeDir() / "inimtemp"): 
+    # Ensure temp folder exists
+    createDir(getHomeDir() / "inimtemp") 
+  
   result.running = true
 
 proc shutdown(k: var Kernel) {.noconv.} =
@@ -38,7 +43,8 @@ proc shutdown(k: var Kernel) {.noconv.} =
 
 let arguments = commandLineParams() # [0] should always be the connection file
 
-if arguments.len < 1:
+if arguments.len < 1: 
+  # no connection file passed: assume we're registering the kernel with jupyter
   echo "Installing Jupyter Nim Kernel"
   var pkgDir = execProcess("nimble path jupyternim").strip()
   var (h, t) = pkgDir.splitPath()
@@ -57,9 +63,11 @@ if arguments.len < 1:
   quit(0)
 #assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
 
-var connmsg = arguments[0].parseConnMsg()
+if arguments.len > 1:
+  echo "Unexpected extra arguments:"
+  echo arguments
 
-var kernel: Kernel = connmsg.init()
+var kernel: Kernel = initKernel(arguments[0])
 
 addExitProc(proc(){.noconv.} = kernel.shutdown())
 
@@ -68,21 +76,24 @@ setControlCHook(proc(){.noconv.} =
   quit()
 ) # Hope this fixes crashing at shutdown
 
-spawn kernel.hb.beat()
+proc run(k: Kernel) =
+  spawn kernel.hb.beat()
 
-debug "Starting to poll..."
+  debug "Starting to poll..."
 
-while kernel.running:
-  if getsockopt[int](kernel.control.socket, EVENTS) == 3: 
-    debug "control..."
-    kernel.control.receive()
-  
-  if getsockopt[int](kernel.shell.socket, EVENTS) == 3: 
-    debug "shell..."
-    kernel.shell.receive()
-  
-  if getsockopt[int](kernel.pub.socket, EVENTS) == 3: 
-    debug "pub..."
-    kernel.pub.receive()
-  
-  sleep(100) # wait a bit before trying again
+  while kernel.running:
+    if getsockopt[int](kernel.control.socket, EVENTS) == 3: 
+      debug "control..."
+      kernel.control.receive()
+    
+    if getsockopt[int](kernel.shell.socket, EVENTS) == 3: 
+      debug "shell..."
+      kernel.shell.receive()
+    
+    if getsockopt[int](kernel.pub.socket, EVENTS) == 3: 
+      debug "pub..."
+      kernel.pub.receive()
+    
+    sleep(100) # wait a bit before trying again
+
+kernel.run()
