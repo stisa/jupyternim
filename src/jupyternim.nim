@@ -7,8 +7,8 @@ type Kernel = object
   ## The kernel object. Contains the sockets.
   hb*: Heartbeat # The heartbeat socket object
   shell*: Shell
-  pub*: IOPub
   control*: Control
+  pub*: IOPub
   running: bool
 
 
@@ -21,7 +21,7 @@ proc init(connmsg: ConnectionMessage): Kernel =
   result.control = createControl(connmsg.ip, connmsg.control_port,
       connmsg.key) # Initialize iopub
 
-  if not dirExists("inimtemp"): createDir("inimtemp") # Ensure temp folder exists
+  if not dirExists(getHomeDir() / "inimtemp"): createDir(getHomeDir() / "inimtemp") # Ensure temp folder exists
   result.running = true
 
 proc shutdown(k: var Kernel) {.noconv.} =
@@ -31,9 +31,9 @@ proc shutdown(k: var Kernel) {.noconv.} =
   k.pub.socket.close()
   k.shell.socket.close()
   k.control.socket.close()
-  if dirExists("inimtemp"):
+  if dirExists(getHomeDir() / "inimtemp"):
     debug "Removing inimtemp..."
-    removeDir("inimtemp") # Remove temp dir on exit
+    removeDir(getHomeDir() / "inimtemp") # Remove temp dir on exit
 
 
 let arguments = commandLineParams() # [0] should always be the connection file
@@ -71,11 +71,18 @@ setControlCHook(proc(){.noconv.} =
 spawn kernel.hb.beat()
 
 debug "Starting to poll..."
+
 while kernel.running:
   if getsockopt[int](kernel.control.socket, EVENTS) == 3: 
+    debug "control..."
     kernel.control.receive()
-  elif getsockopt[int](kernel.shell.socket, EVENTS) == 3: 
+  
+  if getsockopt[int](kernel.shell.socket, EVENTS) == 3: 
+    debug "shell..."
     kernel.shell.receive()
-  elif getsockopt[int](kernel.pub.socket, EVENTS) == 3: 
+  
+  if getsockopt[int](kernel.pub.socket, EVENTS) == 3: 
+    debug "pub..."
     kernel.pub.receive()
-  else: sleep(100) # wait a bit before trying again
+  
+  sleep(100) # wait a bit before trying again

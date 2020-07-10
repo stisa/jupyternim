@@ -148,11 +148,11 @@ when isMainModule:
     writeFile(currentSourcePath(),outcode)
   
   proc appendExport(){.noconv.}=
-    if fileExists("inimtemp/imports.nim"):
-      var fs = open("inimtemp/imports.nim",fmAppend)
+    if fileExists(getHomeDir() / "inimtemp/imports.nim"):
+      var fs = open(getHomeDir() / "inimtemp/imports.nim",fmAppend)
       fs.write("import "&currentSourcePath().extractFilename().changeFileExt("")&"\n")
       fs.write("export "&currentSourcePath().extractFilename().changeFileExt("")&"\n")
-    else: writeFile("inimtemp/imports.nim", "import "&currentSourcePath().extractFilename().changeFileExt("")&"\nexport "&currentSourcePath().extractFilename().changeFileExt("")&"\n" )
+    else: writeFile(getHomeDir() / "inimtemp/imports.nim", "import "&currentSourcePath().extractFilename().changeFileExt("")&"\nexport "&currentSourcePath().extractFilename().changeFileExt("")&"\n" )
 
   addQuitProc(appendExport)
   addQuitProc(wrapEchos)
@@ -199,7 +199,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
 
   debug "With flags:", flags.flatten
 
-  if code.contains("#>clear all") and dirExists("inimtemp"):
+  if code.contains("#>clear all") and dirExists(getHomeDir() / "inimtemp"):
     debug "Cleaning up..."
     flags = @["--hints:off", "--verbosity:0", "--d:release"]
     hasPlot = false
@@ -207,9 +207,9 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     plotw = 640
     use_tcc = false
     tcc_path = ""
-    removeDir("inimtemp")
-    createDir("inimtemp")
-    writeFile("inimtemp/imports.nim", "") #reset imports file
+    removeDir(getHomeDir() / "inimtemp")
+    createDir(getHomeDir() / "inimtemp")
+    writeFile(getHomeDir() / "inimtemp/imports.nim", "") #reset imports file
 
   if code.contains("#>tinycc"):
     use_tcc = true
@@ -220,7 +220,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     if code[tccstart..tccend].len > 3: # 3 is arbitrary, C:\ is already 3 chars
       tcc_path&=" -L:"&code[tccstart..tccend]&" "
     debug tcc_path
-  let srcfile = "inimtemp/block" & $shell.count & ".nim"
+  let srcfile = getHomeDir() / "inimtemp/block" & $shell.count & ".nim"
 
 
   if hasPlot: writeFile(srcfile, inlineplot & injectInclude(last_sucess_block) & code & exportWrapper()) # write the block to a temp ``block[num].nim`` file
@@ -239,10 +239,10 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   # TODO: handle flags
 
   when defined(Windows):
-    var compiler_out = execProcess("nim c "&tcc_path&flatten(flags) & " -d:jupyter -o:inimtemp/compiled.exe "&srcfile) # compile block
+    var compiler_out = execProcess("nim c "&tcc_path&flatten(flags) & " -d:jupyter -o:compiled.exe "&srcfile) # compile block
   else:
-    var compiler_out = execProcess("nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled "&srcfile) # compile block
-  debug "nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:inimtemp/compiled.out "&srcfile
+    var compiler_out = execProcess("nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:compiled "&srcfile) # compile block
+  debug "nim c "&tcc_path&flatten(flags)&" -d:jupyter -o:compiled.out "&srcfile
 
   var status = "ok" # OR 'error' OR 'abort'
   var std_type = "stdout"
@@ -274,11 +274,11 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   else:
     # Send results to frontend
     when defined(windows):
-      let exec_out = execprocess("inimtemp/compiled.exe") # execute compiled block
+      let exec_out = execprocess("compiled.exe") # execute compiled block
     else:
-      let exec_out = execprocess("inimtemp/compiled") # execute compiled block
+      let exec_out = execprocess("compiled") # execute compiled block
 
-    let plotfile = "inimtemp/block" & $shell.count & ".png"
+    let plotfile = getHomeDir() / "inimtemp/block" & $shell.count & ".png"
     if hasPlot and fileExists(plotfile):
       let plotdata = readFile(plotfile)
       content = %*{
@@ -293,7 +293,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     content = %*{
         "execution_count": shell.count,
         "data": {"text/plain": exec_out}, # TODO: handle other mimetypes
-      "metadata": "{}"
+        "metadata": %*{}
     }
     shell.pub.sendMsg("execute_result", content, shell.key, msg)
 
