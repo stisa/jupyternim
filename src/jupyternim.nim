@@ -1,5 +1,5 @@
 import ./jupyternimpkg/[sockets, messages, utils]
-import os, threadpool, zmq, json, std/exitprocs
+import os, osproc, threadpool, zmq, json, std/exitprocs
 from osproc import execProcess
 from strutils import contains, strip
 
@@ -15,6 +15,9 @@ type Kernel = object
 proc initKernel(connfile: string): Kernel =
   debug "Initing"
   let connmsg = connfile.parseConnMsg()
+  if not dirExists(getHomeDir() / "inimtemp"): 
+    # Ensure temp folder exists
+    createDir(getHomeDir() / "inimtemp")
 
   result.hb = createHB(connmsg.ip, connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub(connmsg.ip, connmsg.iopub_port, connmsg.key) # Initialize iopub
@@ -22,10 +25,6 @@ proc initKernel(connfile: string): Kernel =
       result.pub) # Initialize shell
   result.control = createControl(connmsg.ip, connmsg.control_port,
       connmsg.key) # Initialize iopub
-
-  if not dirExists(getHomeDir() / "inimtemp"): 
-    # Ensure temp folder exists
-    createDir(getHomeDir() / "inimtemp") 
   
   result.running = true
 
@@ -36,6 +35,7 @@ proc shutdown(k: var Kernel) {.noconv.} =
   k.pub.socket.close()
   k.shell.socket.close()
   k.control.socket.close()
+  (k.shell.codeserver).kill()
   if dirExists(getHomeDir() / "inimtemp"):
     debug "Removing inimtemp..."
     removeDir(getHomeDir() / "inimtemp") # Remove temp dir on exit
