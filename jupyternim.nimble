@@ -12,7 +12,6 @@ requires "zmq >= 0.3.1"
 requires "hmac"
 requires "nimSHA2"
 
-# Optional: graph
+srcDir = "src"
 
 bin = @["jupyternim"]
-srcDir = "src"

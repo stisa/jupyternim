@@ -1,15 +1,19 @@
-import hotcodereloading, os
+import hotcodereloading, os, strutils
 
 import codecells #the code to be run
 
-proc coderunner() =
-  var loadnum = 0
-  newCode()
+template debug*(str: varargs[string, `$`]) =
+  when not defined(release):
+    let inst = instantiationinfo()
+    echo "[" & $inst.filename & ":" & $inst.line & "] ", str.join(" ")
+
+proc codeserver() =
+  runNewJupyterCellCode()
   while true:
     if hasModuleChanged(codecells): 
-      echo "# RELOAD PERFORMED ", loadnum
+      debug "#### RELOAD PERFORMED ####"
       performCodeReload()
-      newCode()
-      inc loadnum
+      sleep(1000) # maybe waiting will help
+      runNewJupyterCellCode()
 
-coderunner() # run the codeserver
+codeserver() # run the codeserver

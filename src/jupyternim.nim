@@ -15,9 +15,9 @@ type Kernel = object
 proc initKernel(connfile: string): Kernel =
   debug "Initing"
   let connmsg = connfile.parseConnMsg()
-  if not dirExists(getHomeDir() / "inimtemp"): 
+  if not dirExists(jnTempDir): 
     # Ensure temp folder exists
-    createDir(getHomeDir() / "inimtemp")
+    createDir(jnTempDir)
 
   result.hb = createHB(connmsg.ip, connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub(connmsg.ip, connmsg.iopub_port, connmsg.key) # Initialize iopub
@@ -36,9 +36,9 @@ proc shutdown(k: var Kernel) {.noconv.} =
   k.shell.socket.close()
   k.control.socket.close()
   (k.shell.codeserver).kill()
-  if dirExists(getHomeDir() / "inimtemp"):
+  if dirExists(jnTempDir):
     debug "Removing inimtemp..."
-    removeDir(getHomeDir() / "inimtemp") # Remove temp dir on exit
+    removeDir(jnTempDir) # Remove temp dir on exit
 
 
 let arguments = commandLineParams() # [0] should always be the connection file
