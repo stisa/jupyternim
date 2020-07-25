@@ -29,6 +29,8 @@ type
     socket*: TConnection
     key*: string
 
+proc updateCodeServer(shell: var Shell, firstInit=false): string
+
 ## Nicer zmq ##############################
 proc send_multipart(c: TConnection, msglist: seq[string]) =
   ## sends a message over the connection as multipart.
@@ -112,8 +114,7 @@ else:
 const jnTempDir* = getHomeDir() / ".jupyternim"
 
 const initFlags = [ "-d:debug", 
-                    "--hotcodereloading:on",
-                    "--nimcache:" & (jnTempDir / "nimcache").escapeJson,
+                    "--hotcodereloading:on",#"--nimcache:" & (jnTempDir).escape,
                     "-d:jupyter",
                     "-o:" & jnTempDir / outCodeServerName]
 
@@ -132,27 +133,21 @@ proc writeCodeFile(codecells: openArray[string]) =
   for i, cell in codecells:
     if i==codecells.len-1: # wrap the last cell in aftercodereload:
       res.add("proc runNewJupyterCellCode* ()=\n")
-      res.add(cell.indent(2)) # indent to avoid compilation errors
+      res.add(cell.indent(2) & "\n") # indent to avoid compilation errors
     else:
       res.add(cell & "\n")
   writeFile(jnTempDir / "codecells.nim", res)
 
-proc updateCodeServer(shell: var Shell, firstInit=false): string =
-
-  if firstInit:
-    debug "Write out codeserver"
-    writeFile(jnTempDir/"codeserver.nim", codeserver) 
-  
-  debug "Write out codecells"
-  writeCodeFile(shell.codecells)
-
-  debug "Compile codeserver"
-  result = execProcess(r"nim c " & flatten(flags) & jnTempDir / "codeserver.nim") # compile the codeserver
-
 proc startCodeServer(shell: var Shell): Process =
   
   debug "confirm codeserver.exe exists: ", fileExists( jnTempDir / outCodeServerName)
+  if not fileExists( jnTempDir / outCodeServerName):
+    flags.add("-f") # maybe forcing a rebuild ?
+    discard shell.updateCodeServer(firstInit=true)
+    discard flags.pop()
+    debug "trying to re init codeserver"
 
+  
   result = startProcess(jnTempDir / outCodeServerName)
 
   shell.serverout = result.outputStream
@@ -163,7 +158,22 @@ proc startCodeServer(shell: var Shell): Process =
   #else:
   #  echo "codeserver didnt have data"
 
+proc updateCodeServer(shell: var Shell, firstInit=false): string =
 
+  if firstInit:
+    debug "Write out codeserver"
+    writeFile(jnTempDir/"codeserver.nim", codeserver) 
+  
+  debug "Write out codecells"
+  writeCodeFile(shell.codecells)
+
+  debug "Ensuring codeserver is alive"
+  if not firstInit and not shell.codeserver.running:
+    debug "The codeserver died, trying to restart it..."
+    shell.codeserver = shell.startCodeServer()
+
+  debug "Recompile codeserver to perform code reload"
+  result = execProcess(r"nim c " & flatten(flags) & jnTempDir / "codeserver.nim") # compile the codeserver
 
 proc createShell*(ip: string, shellport: BiggestInt, key: string,
     pub: IOPub): Shell =

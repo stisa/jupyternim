@@ -37,8 +37,9 @@ proc shutdown(k: var Kernel) {.noconv.} =
   k.control.socket.close()
   (k.shell.codeserver).kill()
   if dirExists(jnTempDir):
-    debug "Removing inimtemp..."
     removeDir(jnTempDir) # Remove temp dir on exit
+    debug "Removed /.jupyternim"
+
 
 
 let arguments = commandLineParams() # [0] should always be the connection file

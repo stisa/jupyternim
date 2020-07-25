@@ -9,11 +9,16 @@ template debug*(str: varargs[string, `$`]) =
 
 proc codeserver() =
   runNewJupyterCellCode()
+  #lastSeenServer = lastSeenCode
   while true:
-    if hasModuleChanged(codecells): 
+    if hasModuleChanged(codecells):
+      performCodeReload
       debug "#### RELOAD PERFORMED ####"
-      performCodeReload()
-      sleep(1000) # maybe waiting will help
       runNewJupyterCellCode()
+    sleep(1000)
+      
+
+
+      
 
 codeserver() # run the codeserver
