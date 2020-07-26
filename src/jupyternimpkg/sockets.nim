@@ -14,8 +14,9 @@ type
   IOPub* = object
     socket*: TConnection
     key*: string
-    lastmsg*: WireMessage
+    lastmsg*: WireMessage #why?
 
+#TODO: encapsulate code better, why is stuff from shell exported?
   Shell* = object
     socket*: TConnection
     key*: string    # session key
@@ -23,7 +24,6 @@ type
     count*: Natural # Execution counter
     codecells*: seq[string] # the cells sent to execute. TODO: only add the ones that compile?
     codeserver* : Process # the codeserver process, needs to stay alive as long as we need to compile stuff
-    serverout: Stream
 
   Control* = object
     socket*: TConnection
@@ -46,6 +46,9 @@ proc send_multipart(c: TConnection, msglist: seq[string]) =
     else:
       if msg_send(m, c.s, 2) == -1: # 2=>SNDMORE
         zmqError()
+##
+
+proc hasMsgs*(s: Messager): bool = getsockopt[int](s.socket, EVENTS) == 3
 
 proc receiveMsg(s: Messager): WireMessage =
   var raw: seq[string] = @[]
@@ -95,7 +98,7 @@ proc createIOPub*(ip: string, port: BiggestInt, key: string): IOPub =
   result.socket = zmq.listen("tcp://" & ip & ":" & $port, zmq.PUB)
   result.key = key
 
-proc sendState(pub: IOPub, state: string, ) {.inline.} =
+proc sendState*(pub: IOPub, state: string ) {.inline.} =
   pub.sendMsg("status", %* {"execution_state": state}, pub.key)
 
 proc receive*(pub: IOPub) =
@@ -153,14 +156,6 @@ proc startCodeServer(shell: var Shell): Process =
   
   result = startProcess(jnTempDir / outCodeServerName)
 
-  shell.serverout = result.outputStream
-
-  # should not have data to write on start
-  #if result.hasData:
-  #  echo "from startCodeServer: ", result.outputStream.readAll
-  #else:
-  #  echo "codeserver didnt have data"
-
 proc updateCodeServer(shell: var Shell, firstInit=false): string =
 
   if firstInit:
@@ -193,7 +188,6 @@ proc createShell*(ip: string, shellport: BiggestInt, key: string,
 
 proc handleKernelInfo(s: Shell, m: WireMessage) =
   var content: JsonNode
-  spawn s.pub.sendState("busy") # Tell the client we are busy
   #echo "sending: Kernelinfo sending busy"
   content = %* {
     "protocol_version": "5.3",
@@ -210,15 +204,11 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
 
   s.sendMsg("kernel_info_reply", content, s.key, m)
   #echo "sending kernel info reply and idle"
-  spawn s.pub.sendState("idle") #move to thread
-
+  
 var last_sucess_block: int = 0 # This variable maintains the last succesfully compiled block in this session.
 
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   inc shell.count
-
-  spawn shell.pub.sendState("busy") #move to thread
-
   let code = msg.content["code"].str # The code to be executed
  
   if code.contains("#>flags"):  
@@ -239,7 +229,6 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     let tmp = shell.updateCodeServer()
     debug tmp
     shell.codeserver = shell.startCodeServer
-    shell.serverout = shell.codeserver.outputStream
 
   # Send via iopub the block about to be executed
   var content = %* {
@@ -326,8 +315,6 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       "user_expressions": {},
     }
   shell.sendMsg("execution_reply", content, shell.key, msg)
-
-  spawn shell.pub.sendState("idle")
 
 proc parseNimsuggest(nims: string): tuple[found: bool, data: JsonNode] =
   # nimsuggest output is \t separated
@@ -474,7 +461,9 @@ proc receive*(shell: var Shell) =
   debug "shell: ", $recvdmsg.msg_type
   debug recvdmsg.content
   debug "end shell"
+  shell.pub.sendState("busy")
   shell.handle(recvdmsg)
+  shell.pub.sendState("idle")
 
 proc createControl*(ip: string, port: BiggestInt, key: string): Control =
   ## Create the control socket

@@ -71,37 +71,34 @@ proc decode*(raw: openarray[string]): WireMessage =
 
   result.ident = raw[0]
 
-  if(raw[1] != "<IDS|MSG>"):
-    debug "proc receive wire msg: Malformed message?? Follows:"
-    debug raw #TODO: make this an assert?
-  else:
-    result.signature = raw[2]
-    result.header = parseJson(raw[3])
-    result.parent_header = parseJson(raw[4])
-    result.metadata = parseJson(raw[5])
-    result.content = parseJson(raw[6])
+  doAssert(raw[1] == "<IDS|MSG>", "Malformed message follows:\n" & $raw & "\nMalformed message ends\n")
 
-    if result.header.hasKey("msg_type"):
-      case result.header["msg_type"].str:
-      of "kernel_info_request": result.msg_type = WireType.Kernel_Info
-      of "shutdown_request": result.msg_type = WireType.Shutdown
-      of "execute_request": result.msg_type = WireType.Execute
-      of "inspect_request": result.msg_type = WireType.Introspection
-      of "complete_request": result.msg_type = WireType.Completion
-      of "history_request": result.msg_type = WireType.History
-      of "is_complete_request": result.msg_type = WireType.Complete
-      of "comm_info_request": result.msg_type = WireType.Comm_info
-      of "comm_open":
-        result.msg_type = WireType.Comm_Open
-        debug "unused msg: comm_open"
-      else:
-        result.msg_type = WireType.Unknown
-        debug "Unknown WireMsg: ", result.header,
-            " follows:" # Dump the header for unknown messages
-        debug result.content
-        debug "Unknown WireMsg End"
-    else:
-      debug "NO WIRE MESSAGE TYPE?"
+  result.signature = raw[2]
+  result.header = parseJson(raw[3])
+  result.parent_header = parseJson(raw[4])
+  result.metadata = parseJson(raw[5])
+  result.content = parseJson(raw[6])
+
+  doAssert(result.header.hasKey("msg_type"), "Message had no msg_type")
+
+  case result.header["msg_type"].str:
+  of "kernel_info_request": result.msg_type = WireType.Kernel_Info
+  of "shutdown_request": result.msg_type = WireType.Shutdown
+  of "execute_request": result.msg_type = WireType.Execute
+  of "inspect_request": result.msg_type = WireType.Introspection
+  of "complete_request": result.msg_type = WireType.Completion
+  of "history_request": result.msg_type = WireType.History
+  of "is_complete_request": result.msg_type = WireType.Complete
+  of "comm_info_request": result.msg_type = WireType.Comm_info
+  of "comm_open":
+    result.msg_type = WireType.Comm_Open
+    debug "unused msg: comm_open"
+  else:
+    result.msg_type = WireType.Unknown
+    debug "Unknown WireMsg: ", result.header,
+        " follows:" # Dump unknown messages
+    debug result.content
+    debug "Unknown WireMsg End"
 
 
 
@@ -134,6 +131,7 @@ proc encode*(reply_type: string, content: JsonNode, key: string,
   #debug "parent length:", parent.len
   if parent.len == 0:
     # TODO: document this
+    debug "Parent had 0 length for ", reply_type
     maybeParent.ident = "kernel"
     maybeParent.header = %*{}
   else:
@@ -148,7 +146,7 @@ proc encode*(reply_type: string, content: JsonNode, key: string,
   result &= "<IDS|MSG>" # add separator
 
   let secondpartreply = $header & $maybeParent.header & $metadata & $content
-  result &= sign(secondpartreply, key) # add signature TODO
+  result &= sign(secondpartreply, key)
   result &= $header
   result &= $maybeParent.header
   result &= $metadata

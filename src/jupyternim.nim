@@ -5,10 +5,10 @@ from strutils import contains, strip
 
 type Kernel = object
   ## The kernel object. Contains the sockets.
-  hb*: Heartbeat # The heartbeat socket object
-  shell*: Shell
-  control*: Control
-  pub*: IOPub
+  hb: Heartbeat # The heartbeat socket object
+  shell: Shell
+  control: Control
+  pub: IOPub
   running: bool
 
 
@@ -44,6 +44,8 @@ proc shutdown(k: var Kernel) {.noconv.} =
 
 let arguments = commandLineParams() # [0] should always be the connection file
 
+### Install the kernel, executed when running jupyternim directly
+
 if arguments.len < 1: 
   # no connection file passed: assume we're registering the kernel with jupyter
   echo "Installing Jupyter Nim Kernel"
@@ -62,11 +64,14 @@ if arguments.len < 1:
       " --user") # install the spec
   echo "Finished Installing, try running `jupyter notebook` and select New>Nim"
   quit(0)
+
 #assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
 
 if arguments.len > 1:
   echo "Unexpected extra arguments:"
   echo arguments
+
+### Main loop: this part is executed when jupyter starts the kernel
 
 var kernel: Kernel = initKernel(arguments[0])
 
@@ -78,20 +83,21 @@ setControlCHook(proc(){.noconv.} =
 ) # Hope this fixes crashing at shutdown
 
 proc run(k: Kernel) =
-  spawn kernel.hb.beat()
+  debug "Starting kernel"
 
-  debug "Starting to poll..."
+  spawn kernel.hb.beat()
+  spawn kernel.pub.sendState("starting")
 
   while kernel.running:
-    if getsockopt[int](kernel.control.socket, EVENTS) == 3: 
+    if kernel.control.hasMsgs:
       debug "control..."
       kernel.control.receive()
     
-    if getsockopt[int](kernel.shell.socket, EVENTS) == 3: 
+    if kernel.shell.hasMsgs:
       debug "shell..."
       kernel.shell.receive()
     
-    if getsockopt[int](kernel.pub.socket, EVENTS) == 3: 
+    if kernel.pub.hasMsgs:
       debug "pub..."
       kernel.pub.receive()
     
