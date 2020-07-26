@@ -40,7 +40,7 @@ proc receiveMsg(s: Channels): WireMessage = decode(s.socket.recv_multipart)
 proc sendMsg*(s: Channels, reply_type: string,
   content: JsonNode, key: string, parent: varargs[WireMessage]) =
   let encoded = encode(reply_type, content, key, parent)
-  debug "Encoded ", reply_type
+  #debug "Encoded ", reply_type
   s.socket.send_multipart(encoded)
 
 
@@ -225,11 +225,11 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   shell.codecells.add(code)
   var compiler_out = shell.updateCodeServer()
 
-  debug "file before:"
-  debug readFile(jnTempDir / "codecells.nim")
-  debug "file end"
+  # debug "file before:"
+  # debug readFile(jnTempDir / "codecells.nim")
+  # debug "file end"
 
-  debug "server has data: ", shell.codeserver.hasData
+  # debug "server has data: ", shell.codeserver.hasData
 
   var status = "ok" # OR 'error'
   var std_type = "stdout"
@@ -242,12 +242,12 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     #  shell.codeserver.kill()
     #shell.codeserver = startCodeServer(shell)
     # execution not ok, remove last cell
-    debug "Compilation error, discarding last code cell"
+    #debug "Compilation error, discarding last code cell"
     let discardedCell = shell.codecells.pop()
     debug "Discarded:" & discardedCell
-    debug "file after:"
-    debug readFile(jnTempDir / "codecells.nim")
-    debug "file end"
+    #debug "file after:"
+    #debug readFile(jnTempDir / "codecells.nim")
+    #debug "file end"
   
   var compiler_lines = compiler_out.splitLines()
   
@@ -276,7 +276,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     shell.codeserver.inputStream.writeLine("#runNimCodeServer")
     shell.codeserver.inputStream.flush
   
-    debug "trying to read all...", shell.codeserver.hasData
+    #debug "trying to read all...", shell.codeserver.hasData
     var exec_out: string
     var donewriting = false
     while not doneWriting:
@@ -425,7 +425,7 @@ proc handleHistory(shell: Shell, msg: WireMessage) =
   }
 
 proc handle(s: var Shell, m: WireMessage) =
-  debug "shell: handle ", m.msg_type
+  #debug "shell: handle ", m.msg_type
   if m.msg_type == Kernel_Info:
     handleKernelInfo(s, m)
   elif m.msg_type == Execute:
@@ -442,9 +442,9 @@ proc handle(s: var Shell, m: WireMessage) =
 proc receive*(shell: var Shell) =
   ## Receive a message on the shell socket, decode it and handle operations
   let recvdmsg: WireMessage = shell.receiveMsg()
-  debug "shell: ", $recvdmsg.msg_type
-  debug recvdmsg.content
-  debug "end shell"
+  #debug "shell: ", $recvdmsg.msg_type
+  #debug recvdmsg.content
+  #debug "end shell"
   shell.pub.sendState("busy")
   shell.handle(recvdmsg)
   shell.pub.sendState("idle")

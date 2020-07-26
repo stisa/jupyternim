@@ -40,7 +40,7 @@ proc recv_multipart*(c: TConnection): seq[string] =
   result = @[]
   var hasMore = true
   while hasMore:
-    debug "HASMORE: ", hasMore
+    #debug "HASMORE: ", hasMore
     let rc = c.s.receive()
     if rc != "": 
       result &= rc
@@ -48,7 +48,7 @@ proc recv_multipart*(c: TConnection): seq[string] =
       # if RCVMORE == 0, this is either a single message or 
       # we reached the last frame
       hasMore = false
-  debug "RECV MULTIPART LEN: ", result.len
+  # debug "RECV MULTIPART LEN: ", result.len
 
 proc filter*[T](seq1: openarray[T], 
                 pred: proc(item: T): bool {.closure.}): seq[T] {.inline.} =

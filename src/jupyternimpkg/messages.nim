@@ -130,7 +130,7 @@ proc encode*(reply_type: string, content: JsonNode, key: string,
   #debug "parent length:", parent.len
   if parent.len == 0:
     # TODO: document this
-    debug "Parent had 0 length for ", reply_type
+    #debug "Parent had 0 length for ", reply_type
     maybeParent.ident = "kernel"
     maybeParent.header = %*{}
   else:

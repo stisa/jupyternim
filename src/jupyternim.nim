@@ -87,15 +87,15 @@ proc run(k: Kernel) =
 
   while kernel.running:
     if kernel.control.hasMsgs:
-      debug "control..."
+      #debug "control..."
       kernel.control.receive()
     
     if kernel.shell.hasMsgs:
-      debug "shell..."
+      #debug "shell..."
       kernel.shell.receive()
     
     if kernel.pub.hasMsgs:
-      debug "pub..."
+      #debug "pub..."
       kernel.pub.receive()
     
     sleep(100) # wait a bit before trying again TODO: needed?

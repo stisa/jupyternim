@@ -16,7 +16,6 @@ proc codeserver() =
     let cmd = stdin.readLine
     debug "CODESERVERGOTACOMMAND", cmd
     if cmd.contains("#runNimCodeServer"):
-      debug cmd.contains("#runNimCodeServer")
       pausedbyJN = false
     
     if pausedbyJN: continue
