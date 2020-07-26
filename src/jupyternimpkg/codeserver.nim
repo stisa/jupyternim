@@ -1,3 +1,5 @@
+{.push warning[User]:off .}
+
 import hotcodereloading, os, strutils
 
 import codecells #the code to be run
@@ -8,17 +10,26 @@ template debug*(str: varargs[string, `$`]) =
     echo "[" & $inst.filename & ":" & $inst.line & "] ", str.join(" ")
 
 proc codeserver() =
-  runNewJupyterCellCode()
-  #lastSeenServer = lastSeenCode
+  # we start in paused state, then when we get run we exec once and then go back to paused
+  var pausedbyJN = true
   while true:
-    if hasModuleChanged(codecells):
-      performCodeReload
-      debug "#### RELOAD PERFORMED ####"
-      runNewJupyterCellCode()
-    sleep(1000)
-      
+    let cmd = stdin.readLine
+    debug "CODESERVERGOTACOMMAND", cmd
+    if cmd.contains("#runNimCodeServer"):
+      debug cmd.contains("#runNimCodeServer")
+      pausedbyJN = false
+    
+    if pausedbyJN: continue
 
+  
+    performCodeReload()
+    debug "#### RELOAD PERFORMED ####"
+    runNewJupyterCellCode()
 
-      
+    pausedbyJN = true
+    stdout.writeLine("#serverReplied")      
+    stdout.flushFile
 
 codeserver() # run the codeserver
+
+{.pop.}
