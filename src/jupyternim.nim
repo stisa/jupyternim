@@ -32,15 +32,12 @@ proc shutdown(k: var Kernel) {.noconv.} =
   debug "Shutting Down..."
   k.running = false
   k.hb.close()
-  k.pub.socket.close()
-  k.shell.socket.close()
-  k.control.socket.close()
-  (k.shell.codeserver).kill()
+  k.pub.close()
+  k.shell.close()
+  k.control.close()
   if dirExists(jnTempDir):
     removeDir(jnTempDir) # Remove temp dir on exit
     debug "Removed /.jupyternim"
-
-
 
 let arguments = commandLineParams() # [0] should always be the connection file
 
@@ -86,7 +83,7 @@ proc run(k: Kernel) =
   debug "Starting kernel"
 
   spawn kernel.hb.beat()
-  spawn kernel.pub.sendState("starting")
+  kernel.pub.sendState("starting")
 
   while kernel.running:
     if kernel.control.hasMsgs:
@@ -101,6 +98,6 @@ proc run(k: Kernel) =
       debug "pub..."
       kernel.pub.receive()
     
-    sleep(100) # wait a bit before trying again
+    sleep(100) # wait a bit before trying again TODO: needed?
 
 kernel.run()

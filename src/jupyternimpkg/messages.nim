@@ -39,7 +39,7 @@ proc parseConnMsg*(connfile: string): ConnectionMessage =
   if parsedconn.hasKey("kernel_name"):
     result.kernel_name = parsedconn["kernel_name"].str
   else: result.kernel_name = "N/A?"
-  # transport method??
+  # TODO: handle transport method?
 
 proc `$`*(cm: ConnectionMessage): string =
   result = "ip: " & cm.ip &
@@ -65,10 +65,9 @@ type WireMessage* = object
   content*: JsonNode
   extra*: string      # Extra raw data
 
-#proc receive_wire_msg*(c:TConnection):WireMessage =
 proc decode*(raw: openarray[string]): WireMessage =
   ## decoedes a wire message as a seq of string blobs into a WireMessage object
-
+  ## FIXME: only handles the first 7 parts, the extra raw data is discarded
   result.ident = raw[0]
 
   doAssert(raw[1] == "<IDS|MSG>", "Malformed message follows:\n" & $raw & "\nMalformed message ends\n")
@@ -104,7 +103,7 @@ proc decode*(raw: openarray[string]): WireMessage =
 
 proc encode*(reply_type: string, content: JsonNode, key: string,
     parent: varargs[WireMessage]): seq[string] =
-  ## Encode a message following wire spec and sends using the connection specified
+  ## Encode a message following wire spec
   let iopubTopics = [ #TODO: move to an enum?
     "execute_result",
     "stream",
@@ -138,15 +137,16 @@ proc encode*(reply_type: string, content: JsonNode, key: string,
     maybeParent = parent[0]
 
   if  reply_type in iopubTopics: 
-    # FIXME: IOPUB has special treatment RE: idents
+    # FIXME: IOPUB has special treatment RE: idents see
+    # https://jupyter-client.readthedocs.io/en/stable/messaging.html#the-wire-protocol
     result = @[reply_type]
   else:
     result = @[maybeParent.ident] # Add ident
 
   result &= "<IDS|MSG>" # add separator
 
-  let secondpartreply = $header & $maybeParent.header & $metadata & $content
-  result &= sign(secondpartreply, key)
+  let partToSign = $header & $maybeParent.header & $metadata & $content
+  result &= sign(partToSign, key)
   result &= $header
   result &= $maybeParent.header
   result &= $metadata
