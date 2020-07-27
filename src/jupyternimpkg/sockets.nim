@@ -29,7 +29,7 @@ type
 
 
 # forward decl
-proc updateCodeServer(shell: var Shell, firstInit=false): string
+proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, exitcode: int]
 
 
 # Helpers that generally work on all channel objects
@@ -138,7 +138,7 @@ proc startCodeServer(shell: var Shell): Process =
   
   result = startProcess(jnTempDir / outCodeServerName)
 
-proc updateCodeServer(shell: var Shell, firstInit=false): string =
+proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, exitcode: int] =
   ## Write out the source code if firstInit==true, then
   ## write the code file (the "logic")
   ## compile it
@@ -156,7 +156,7 @@ proc updateCodeServer(shell: var Shell, firstInit=false): string =
     shell.codeserver = shell.startCodeServer()
 
   debug "Recompile codeserver to perform code reload"
-  result = execProcess(r"nim c " & flatten(flags) & jnTempDir / "codeserver.nim") # compile the codeserver
+  result = execCmdEx(r"nim c " & flatten(flags) & jnTempDir / "codeserver.nim") # compile the codeserver
 
 proc createShell*(ip: string, shellport: BiggestInt, key: string,
     pub: IOPub): Shell =
@@ -168,7 +168,7 @@ proc createShell*(ip: string, shellport: BiggestInt, key: string,
   # this way it will be there when generating the code to be run
   result.codecells = @initCodecells
   let tmp = result.updateCodeServer(firstInit=true)
-  debug tmp
+  debug tmp.output
   result.codeserver = result.startCodeServer()
 
 proc handleKernelInfo(s: Shell, m: WireMessage) =
@@ -223,90 +223,106 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
 
   # Compile and send compilation messages to jupyter's stdout
   shell.codecells.add(code)
-  var compiler_out = shell.updateCodeServer()
+  var compilationResult = shell.updateCodeServer()
 
   # debug "file before:"
   # debug readFile(jnTempDir / "codecells.nim")
   # debug "file end"
 
   # debug "server has data: ", shell.codeserver.hasData
-
-  var status = "ok" # OR 'error'
-  var std_type = "stdout"
-  if compiler_out.contains("Error:"): 
-    #TODO: ensure this can't appear in users code,
-    #      maybe use outputcode of execProcess?
+  
+  var status, streamName: string
+  
+  if compilationResult.exitcode != 0: 
+    # return early if the code didn't compile
     status = "error"
-    std_type = "stderr"
-    #if shell.codeserver.running:
-    #  shell.codeserver.kill()
-    #shell.codeserver = startCodeServer(shell)
+    streamName = "stderr"
+    
     # execution not ok, remove last cell
+    
     #debug "Compilation error, discarding last code cell"
     let discardedCell = shell.codecells.pop()
     debug "Discarded:" & discardedCell
     #debug "file after:"
     #debug readFile(jnTempDir / "codecells.nim")
     #debug "file end"
-  
-  var compiler_lines = compiler_out.splitLines()
-  
-  # clean out empty lines from compilation messages
-  compiler_out = ""
-  for ln in compiler_lines:
-    if ln != "": compiler_out &= (ln & "\n")
 
-  content = %*{"name": std_type, "text": compiler_out}
+    content = %*{
+      "name": streamName, 
+      "text": compilationResult.output
+    }
+    shell.pub.sendMsg("stream", content, shell.key, msg)
+
+    content = %* {
+      "status": status,
+      "ename": "Compile error", # Exception name, as a string
+      "evalue": "Error", # Exception value, as a string
+      "traceback": nil, # traceback frames as strings, TODO:
+    }
+    shell.pub.sendMsg("error", content, shell.key, msg)
+    # Tell the frontend execution failed from shell
+    content = %* {
+      "status": status,
+      "execution_count": shell.count,
+    }
+    shell.sendMsg("execution_reply", content, shell.key, msg)
+    
+    return
+
+  status = "ok"
+  streamName = "stdout"
+  
+  content = %*{"name": streamName, "text": compilationResult.output}
 
   # Send compiler messages
   shell.pub.sendMsg("stream", content, shell.key, msg)
 
-  if status == "error":
-    content = %* { # TODO:
-      "status": status,
-      "ename": "Compile error", # Exception name, as a string
-      "evalue": "Error", # Exception value, as a string
-      "traceback": nil, # traceback frames as strings
-    }
-    shell.pub.sendMsg("error", content, shell.key, msg)
-  else:
-    # Since the compilation was fine, run code and send results with iopub
+  # Since the compilation was fine, run code and send results with iopub
 
-    # run the new code
-    shell.codeserver.inputStream.writeLine("#runNimCodeServer")
-    shell.codeserver.inputStream.flush
+  # run the new code
+  shell.codeserver.inputStream.writeLine("#runNimCodeServer")
+  shell.codeserver.inputStream.flush
+
+  #debug "trying to read all...", shell.codeserver.hasData
+  var exec_out: string
+  var donewriting = false
+  while not doneWriting:
+    let tmp = shell.codeserver.outputStream.readLine
+    if tmp.rfind("#serverReplied") != -1: 
+      donewriting = true
+      break # we dont want the last message anyway
+    exec_out &= tmp & "\n"
+  debug "done reading, read: ", exec_out
   
-    #debug "trying to read all...", shell.codeserver.hasData
-    var exec_out: string
-    var donewriting = false
-    while not doneWriting:
-      let tmp = shell.codeserver.outputStream.readLine
-      if tmp.contains("#serverReplied"): 
-        donewriting = true
-        break # we dont want the last message anyway
-      exec_out &= tmp & "\n"
-    debug "done reading, read: ", exec_out
-
+  # TODO: don't assume no errors are possible at runtime, 
+  #       check for errors there too
+  
+  if exec_out.contains("#>jnps"): 
+    debug "Handling plot"
+    # there's at least a plot TODO: multiple plots (rfind is dangerous in that case)
+    # plotdata is base64 encoded! and delimited by jpns and 0000x0000 that is WxH
+    let plotdata = exec_out[exec_out.find("#>jnps")+len("#>jnps0000x0000")..<exec_out.rfind("jnps<#")]
     content = %*{
-        "execution_count": shell.count,
-        "data": {"text/plain": exec_out}, # TODO: detect and handle other mimetypes
-        "metadata": %*{}
+        "data": {"image/png": plotdata}, # TODO: handle other mimetypes
+        "metadata": %*{"image/png": {"width": 320, "height": 240}}, #FIXME: sizes from 0000x0000
+        "transient": %*{}
     }
-    shell.pub.sendMsg("execute_result", content, shell.key, msg)
+    shell.pub.sendMsg("display_data", content, shell.key, msg) 
+  
+  content = %*{
+      "execution_count": shell.count,
+      "data": {"text/plain": exec_out}, # TODO: detect and handle other mimetypes
+      "metadata": %*{}
+  }
+  shell.pub.sendMsg("execute_result", content, shell.key, msg)
 
   # Tell the frontend execution was ok, or not from shell
-  if status == "error" or status == "abort":
-    content = %* {
-      "status": status,
-      "execution_count": shell.count,
-    }
-  else:
-    content = %* {
-      "status": status,
-      "execution_count": shell.count,
-      "payload": {},
-      "user_expressions": {},
-    }
+  content = %* {
+    "status": status,
+    "execution_count": shell.count,
+    "payload": {},
+    "user_expressions": {},
+  }
   shell.sendMsg("execution_reply", content, shell.key, msg)
 
 proc parseNimsuggest(nims: string): tuple[found: bool, data: JsonNode] =

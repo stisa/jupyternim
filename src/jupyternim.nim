@@ -81,9 +81,9 @@ setControlCHook(proc(){.noconv.} =
 
 proc run(k: Kernel) =
   debug "Starting kernel"
+  kernel.pub.sendState("starting")
 
   spawn kernel.hb.beat()
-  kernel.pub.sendState("starting")
 
   while kernel.running:
     if kernel.control.hasMsgs:
