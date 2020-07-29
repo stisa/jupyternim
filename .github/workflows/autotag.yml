@@ -2,18 +2,20 @@ name: Check and update tag
 on: 
   push:
     branches:
-      - master
+      - "${{ github.event.repository.name }}/master"
 jobs:
   tag:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+      - run: "echo \"::warning:: Actor: ${{ github.actor }}\""
 
-    - uses: butlerlogic/action-autotag@1.1.1
-      with:
-        strategy: regex 
-        root: "${{ github.event.repository.name }}.nimble"
-        regex_pattern: "version\\s*=\\s*\"([0-9\\.]+)\""
-      env:
+      - uses: actions/checkout@v1
+
+      - uses: butlerlogic/action-autotag@1.1.1
+        with:
+          strategy: regex 
+          root: "${{ github.event.repository.name }}.nimble"
+          regex_pattern: "version\\s*=\\s*\"([0-9\\.]+)\""
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
