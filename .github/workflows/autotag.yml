@@ -1,5 +1,8 @@
 name: Check and update tag
-on: [push]
+on: 
+  push:
+    branches:
+      - master
 jobs:
   tag:
     runs-on: ubuntu-latest
