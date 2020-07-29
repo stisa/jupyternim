@@ -11,5 +11,5 @@ jobs:
       with:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         strategy: regex 
-        root: "/${{ github.event.repository.name }}.nimble"
+        root: "${{ github.event.repository.name }}.nimble"
         regex_pattern: "version\\s*=\\s*\"([0-9\\.]+)\""
