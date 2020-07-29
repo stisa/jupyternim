@@ -1,8 +1,6 @@
 name: Check and update tag
 on: 
-  push:
-    branches:
-      - "${{ github.event.repository.name }}/master"
+  push
 jobs:
   tag:
     runs-on: ubuntu-latest
