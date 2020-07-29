@@ -1,7 +1,7 @@
 name: Check and update tag
 on: [push, pull_request]
 jobs:
-  tag:
+  build:
     runs-on: ubuntu-latest
 
     steps:
