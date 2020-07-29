@@ -1,15 +1,21 @@
 name: Check and update tag
-on: [push, pull_request]
+on: 
+  push:
+    branches:
+      - master
 jobs:
   tag:
+    if: github.actor == github.repository_owner
+    
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v1
 
-    - uses: butlerlogic/action-autotag@1.0.0
-      with:
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        strategy: regex 
-        root: "/${{ github.event.repository.name }}.nimble"
-        regex_pattern: "version\\s*=\\s*\"([0-9\\.]+)\""
+      - uses: butlerlogic/action-autotag@1.1.1
+        with:
+          strategy: regex 
+          root: "${{ github.event.repository.name }}.nimble"
+          regex_pattern: "version\\s*=\\s*\"([0-9\\.]+)\""
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
