@@ -1,0 +1,15 @@
+name: Check and update tag
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - uses: butlerlogic/action-autotag@1.0.0
+      with:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        strategy: regex 
+        root: "/${{ github.event.repository.name }}.nimble"
+        regex_pattern: "version(?:\s)*=(?:\s)*"([0-9\.]+)"
