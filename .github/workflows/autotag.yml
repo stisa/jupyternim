@@ -1,7 +1,7 @@
 name: Check and update tag
 on: [push, pull_request]
 jobs:
-  build:
+  tag:
     runs-on: ubuntu-latest
 
     steps:
@@ -12,4 +12,4 @@ jobs:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         strategy: regex 
         root: "/${{ github.event.repository.name }}.nimble"
-        regex_pattern: "version(?:\s)*=(?:\s)*"([0-9\.]+)"
+        regex_pattern: "version\\s*=\\s*\"([0-9\\.]+)\""
