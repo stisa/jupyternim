@@ -1,13 +1,15 @@
 name: Check and update tag
 on: 
-  push
+  push:
+    branches:
+      - master
 jobs:
   tag:
+    if: github.actor == github.repository_owner
+    
     runs-on: ubuntu-latest
 
     steps:
-      - run: "echo \"::warning:: Actor: ${{ github.actor }}\""
-
       - uses: actions/checkout@v1
 
       - uses: butlerlogic/action-autotag@1.1.1
