@@ -7,7 +7,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - uses: butlerlogic/action-autotag@1.0.0
+    - uses: butlerlogic/action-autotag@1.1.1
       with:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         strategy: regex 
