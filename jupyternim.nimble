@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.4.1"
+version       = "0.4.2"
 author        = "Silvio T."
 description   = "A Jupyter Kernel for Nim"
 license       = "MIT"
