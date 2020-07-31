@@ -1,20 +1,23 @@
 import ./jupyternimpkg/[sockets, messages, utils]
-import os, threadpool, zmq, json, std/exitprocs
+import os, osproc, threadpool, zmq, json, std/exitprocs
 from osproc import execProcess
 from strutils import contains, strip
 
 type Kernel = object
   ## The kernel object. Contains the sockets.
-  hb*: Heartbeat # The heartbeat socket object
-  shell*: Shell
-  control*: Control
-  pub*: IOPub
+  hb: Heartbeat # The heartbeat socket object
+  shell: Shell
+  control: Control
+  pub: IOPub
   running: bool
 
 
 proc initKernel(connfile: string): Kernel =
   debug "Initing"
   let connmsg = connfile.parseConnMsg()
+  if not dirExists(jnTempDir): 
+    # Ensure temp folder exists
+    createDir(jnTempDir)
 
   result.hb = createHB(connmsg.ip, connmsg.hb_port) # Initialize the heartbeat socket
   result.pub = createIOPub(connmsg.ip, connmsg.iopub_port, connmsg.key) # Initialize iopub
@@ -22,10 +25,6 @@ proc initKernel(connfile: string): Kernel =
       result.pub) # Initialize shell
   result.control = createControl(connmsg.ip, connmsg.control_port,
       connmsg.key) # Initialize iopub
-
-  if not dirExists(getHomeDir() / "inimtemp"): 
-    # Ensure temp folder exists
-    createDir(getHomeDir() / "inimtemp") 
   
   result.running = true
 
@@ -33,15 +32,16 @@ proc shutdown(k: var Kernel) {.noconv.} =
   debug "Shutting Down..."
   k.running = false
   k.hb.close()
-  k.pub.socket.close()
-  k.shell.socket.close()
-  k.control.socket.close()
-  if dirExists(getHomeDir() / "inimtemp"):
-    debug "Removing inimtemp..."
-    removeDir(getHomeDir() / "inimtemp") # Remove temp dir on exit
-
+  k.pub.close()
+  k.shell.close()
+  k.control.close()
+  if dirExists(jnTempDir):
+    removeDir(jnTempDir) # Remove temp dir on exit
+    debug "Removed /.jupyternim"
 
 let arguments = commandLineParams() # [0] should always be the connection file
+
+### Install the kernel, executed when running jupyternim directly
 
 if arguments.len < 1: 
   # no connection file passed: assume we're registering the kernel with jupyter
@@ -61,11 +61,14 @@ if arguments.len < 1:
       " --user") # install the spec
   echo "Finished Installing, try running `jupyter notebook` and select New>Nim"
   quit(0)
+
 #assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
 
 if arguments.len > 1:
   echo "Unexpected extra arguments:"
   echo arguments
+
+### Main loop: this part is executed when jupyter starts the kernel
 
 var kernel: Kernel = initKernel(arguments[0])
 
@@ -77,23 +80,24 @@ setControlCHook(proc(){.noconv.} =
 ) # Hope this fixes crashing at shutdown
 
 proc run(k: Kernel) =
+  debug "Starting kernel"
+  kernel.pub.sendState("starting")
+
   spawn kernel.hb.beat()
 
-  debug "Starting to poll..."
-
   while kernel.running:
-    if getsockopt[int](kernel.control.socket, EVENTS) == 3: 
-      debug "control..."
+    if kernel.control.hasMsgs:
+      #debug "control..."
       kernel.control.receive()
     
-    if getsockopt[int](kernel.shell.socket, EVENTS) == 3: 
-      debug "shell..."
+    if kernel.shell.hasMsgs:
+      #debug "shell..."
       kernel.shell.receive()
     
-    if getsockopt[int](kernel.pub.socket, EVENTS) == 3: 
-      debug "pub..."
+    if kernel.pub.hasMsgs:
+      #debug "pub..."
       kernel.pub.receive()
     
-    sleep(100) # wait a bit before trying again
+    sleep(100) # wait a bit before trying again TODO: needed?
 
 kernel.run()

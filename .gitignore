@@ -9,5 +9,4 @@ inimtemp
 .ipynb_checkpoints
 *.dll
 old/
-src/jupyternimspec/kernel.json
 inim/
