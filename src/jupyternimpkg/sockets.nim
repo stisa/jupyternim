@@ -345,7 +345,8 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
         "metadata": %*{"image/png": {"width": 320, "height": 240}}, #FIXME: sizes from 0000x0000
         "transient": %*{}
     }
-    shell.pub.sendMsg("display_data", content, shell.key, msg) 
+    shell.pub.sendMsg("display_data", content, shell.key, msg)
+    exec_out = exec_out.replace(plotdata, "") # clear out the base64 img from the output
   
   content = %*{
       "execution_count": shell.count,
