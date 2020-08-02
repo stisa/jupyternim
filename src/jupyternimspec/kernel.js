@@ -1,4 +1,8 @@
-define(function(){
+define([
+  'base/js/namespace',
+  'notebook/js/codecell',
+  'services/kernels/kernel'
+], function(Jupyter, codecell, kernel){
   return {onload: function(){
 
 // CodeMirror mode taken from PMunch https://github.com/PMunch/nim-playground-frontend
@@ -401,5 +405,80 @@ CodeMirror.defineMode("nim", function(conf, parserConf) {
 
 CodeMirror.defineMIME("text/x-nim", "nim");
 
+console.log('[patch_execute] adding cell metadata to execute request');
+// Need to keep this current with notebook
+kernel.Kernel.prototype.execute = function (code, callbacks, options, metadata) {
+  // the patch is just the addition of the "metadata" field to the args 
+  // and passing it to shell_message
+  var content = {
+      code : code,
+      silent : true,
+      store_history : false,
+      user_expressions : {},
+      allow_stdin : false
+  };
+  callbacks = callbacks || {};
+  if (callbacks.input !== undefined) {
+      content.allow_stdin = true;
+  }
+  $.extend(true, content, options);
+  this.events.trigger('execution_request.Kernel', {kernel: this, content: content});
+  return this.send_shell_message("execute_request", content, callbacks, metadata);
+};
+
+codecell.CodeCell.prototype.execute = function (stop_on_error) {
+  if (!this.kernel) {
+      console.log(i18n.msg._("Can't execute cell since kernel is not set."));
+      return;
+  }
+
+  if (stop_on_error === undefined) {
+      if (this.metadata !== undefined && 
+              this.metadata.tags !== undefined) {
+          if (this.metadata.tags.indexOf('raises-exception') !== -1) {
+              stop_on_error = false;
+          } else {
+              stop_on_error = true;
+          }
+      } else {
+         stop_on_error = true;
+      }
+  }
+
+  this.clear_output(false, true);
+  var old_msg_id = this.last_msg_id;
+  if (old_msg_id) {
+      this.kernel.clear_callbacks_for_msg(old_msg_id);
+      delete codecell.CodeCell.msg_cells[old_msg_id];
+      this.last_msg_id = null;
+  }
+  if (this.get_text().trim().length === 0) {
+      // nothing to do
+      this.set_input_prompt(null);
+      return;
+  }
+  this.set_input_prompt('*');
+  this.element.addClass("running");
+  var callbacks = this.get_callbacks();
+
+  // Patch: add cellId to metadata to match JupyterLab
+  var split_uuid = i=>i.substr(0,8)+"-"+i.substr(8,4)+"-"+i.substr(12,4)+"-"+i.substr(16,4)+"-"+i.substr(20);
+  this.last_msg_id = this.kernel.execute(this.get_text(), callbacks, {silent: false, store_history: true,
+      stop_on_error : stop_on_error}, {cellId: split_uuid(this.cell_id) });
+  // end patch
+  codecell.CodeCell.msg_cells[this.last_msg_id] = this;
+  this.render();
+  this.events.trigger('execute.CodeCell', {cell: this});
+  var that = this;
+  function handleFinished(evt, data) {
+      if (that.kernel.id === data.kernel.id && that.last_msg_id === data.msg_id) {
+              that.events.trigger('finished_execute.CodeCell', {cell: that});
+          that.events.off('finished_iopub.Kernel', handleFinished);
+        }
+  }
+  this.events.on('finished_iopub.Kernel', handleFinished);
+};
+
+console.log('[patch_execute] done');
 
 }}});

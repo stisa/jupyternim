@@ -91,7 +91,7 @@ proc decode*(raw: openarray[string]): WireMessage =
   of "comm_info_request": result.msg_type = WireType.Comm_info
   of "comm_open":
     result.msg_type = WireType.Comm_Open
-    debug "unused msg: comm_open"
+    debug "unused msg: comm_open", $raw
   else:
     result.msg_type = WireType.Unknown
     debug "Unknown WireMsg: ", result.header,
