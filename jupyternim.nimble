@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.5.0"
+version       = "0.5.1"
 author        = "stisa"
 description   = "A Jupyter Kernel for Nim"
 license       = "MIT"
@@ -12,6 +12,6 @@ requires "zmq >= 0.3.1"
 requires "hmac"
 requires "nimSHA2"
 
+installDirs = @["jupyternimpkg", "jupyternimspec"]
 srcDir = "src"
-
 bin = @["jupyternim"]

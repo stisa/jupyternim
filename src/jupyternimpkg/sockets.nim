@@ -130,6 +130,8 @@ proc writeCodeFile(shell:Shell) =
   var res = ""
   for k, cell in shell.code:
     if k == shell.executingCellId:
+      # save the lastmsg to a string in case we want to use it in display
+      #res.add("jnparentmsg = " & ($(%* shell.pub.lastmsg)).escapeJson) #omg the json escaping
       when defined useHcr:
         # wrap the last cell in the hoist macro:
         res.add("hoist:\n")
@@ -219,6 +221,8 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     code = msg.content["code"].str # The code to be executed
     cellId = msg.metadata["cellId"].str # The code to be executed
   shell.executingCellId = cellId
+
+  shell.pub.lastmsg = msg # update execute msg
 
   # TODO: move the logic that deals with magics and flags somewhere else
   if code.contains("#>flags"):  
@@ -337,9 +341,9 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   # TODO: don't assume no errors are possible at runtime, 
   #       check for errors there too
 
-  if exec_out.contains("#>jnps"): 
+  if exec_out.contains("#<jndd>"): 
     # FIXME: document this!
-    debug "Handling plot"
+    debug "Handling display data"
     # there's at least a plot TODO: multiple plots (rfind is dangerous in that case)
     # plotdata is base64 encoded! and delimited by jpns and 0000x0000 that is WxH
     # TODO: we probably want to remove this part from the output?
@@ -347,16 +351,12 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     # Maybe just put code to open a socket and send a display_data message in a utils lib
     # and let the user/plotlib deal with this? Much cleaner?
     let
-      plotstart = exec_out.rfind("#>jnps")
-      plotend = exec_out.rfind("jnps<#")
-    let plotdata = exec_out[plotstart+len("#>jnps0000x0000")..<plotend]
-    content = %*{
-        "data": {"image/png": plotdata}, # TODO: handle other mimetypes
-        "metadata": %*{"image/png": {"width": 320, "height": 240}}, #FIXME: sizes from 0000x0000
-        "transient": %*{}
-    }
+      ddstart = exec_out.rfind("#<jndd>#")
+      ddend = exec_out.rfind("#<outjndd>#")
+    let dddata = exec_out[ddstart+len("#<jndd>#")..<ddend]
+    content = parseJson(dddata)
     shell.pub.sendMsg("display_data", content, shell.key, msg)
-    exec_out = exec_out.replace(plotdata, "") # clear out the base64 img from the output
+    exec_out = exec_out.replace(dddata, "") # clear out the base64 img from the output
   
   content = %*{
       "execution_count": shell.count,
