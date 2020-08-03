@@ -11,10 +11,20 @@ type Kernel = object
   pub: IOPub
   running: bool
 
+proc weirdPathExpand(path:string):string =
+  # A weird expansion from eg ~\AppData\Local\Temp\tmp-19464LN9yIhQ6n1Nr.json
+  # to /AppData/Local/Temp/tmp-19464LN9yIhQ6n1Nr.json
+  # It's the way vscode-python passes the connfile path
+  result = path
+  for c in result.mitems:
+    if c == '\\': c = '/'
+  result = expandTilde(result)
 
 proc initKernel(connfile: string): Kernel =
-  debug "Initing"
-  let connmsg = connfile.parseConnMsg()
+  debug "Initing from: ", connfile, " exists: ", connfile.fileExists, weirdPathExpand(connfile).fileExists
+  if not weirdPathExpand(connfile).fileExists:
+    quit(1)
+  let connmsg = weirdPathExpand(connfile).parseConnMsg()
   if not dirExists(jnTempDir): 
     # Ensure temp folder exists
     createDir(jnTempDir)
@@ -49,9 +59,12 @@ if arguments.len < 1:
   var pkgDir = execProcess("nimble path jupyternim").strip()
   var (h, t) = pkgDir.splitPath()
 
+  var pathToJN = (if t == "src": h else: pkgDir) / "jupyternim"
+  when defined windows:
+    pathToJN = pathToJN.changeFileExt("exe")
+
   let kernelspec = %*{
-    "argv": [ (if t == "src": h else: pkgDir) / "jupyternim",
-        "{connection_file}"],
+    "argv": [pathToJN, "{connection_file}"],
     "display_name": "Nim",
     "language": "nim",
     "file_extension": ".nim"}
@@ -65,8 +78,8 @@ if arguments.len < 1:
 #assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
 
 if arguments.len > 1:
-  echo "Unexpected extra arguments:"
-  echo arguments
+  debug "Unexpected extra arguments:", $arguments
+  if arguments[0][^2..^1] == "py": quit(1) # vscode-python shenanigans
 
 ### Main loop: this part is executed when jupyter starts the kernel
 
@@ -81,11 +94,16 @@ setControlCHook(proc(){.noconv.} =
 
 proc run(k: Kernel) =
   debug "Starting kernel"
+  kernel.hb.beat
   kernel.pub.sendState("starting")
 
-  spawn kernel.hb.beat()
+  #spawn kernel.hb.beat()
+  debug "Entering main loop"
+  kernel.pub.sendState("idle")
 
   while kernel.running:
+    # this is gonna crash due to timeouts... or make the pc explode with messages
+    kernel.hb.beat
     if kernel.control.hasMsgs:
       #debug "control..."
       kernel.control.receive()

@@ -48,22 +48,22 @@ proc sendMsg*(s: Channels, reply_type: string,
 ## Heartbeat Socket
 proc createHB*(ip: string, hbport: BiggestInt): Heartbeat =
   ## Create the heartbeat socket
-  result.socket = zmq.listen("tcp://" & ip & ":" & $hbport)
+  result.socket = zmq.listen("tcp://" & ip & ":" & $hbport, zmq.REP)
   result.alive = true
 
 proc beat*(hb: Heartbeat) =
   ## Execute the heartbeat loop.
   ## Usually ``spawn``ed to avoid killing the kernel when it's busy
-  debug "starting hb loop..."
-  while hb.alive:
-    var s: string
-    try:
-      s = hb.socket.receive() # Read from socket
-    except:
-      debug "exception in Heartbeat Loop"
-      break
-
+  #debug "starting hb loop..."
+  #while hb.alive:
+  var s: string
+  try:
+    s = hb.socket.receive(zmq.DONTWAIT) # Read from socket
+    #debug "echoing hb"
     hb.socket.send(s) # Echo back what we read
+  except EZmq as ez:
+    discard
+    #debug "exception in Heartbeat Loop", ez.msg
 
 proc close*(hb: var Heartbeat) =
   hb.alive = false
@@ -138,7 +138,8 @@ proc writeCodeFile(shell:Shell) =
         res.add(cell.indent(2) & "\n") # indent to avoid compilation errors
       else:
         res.add("\necho \"#>newcodeout\"\n") # so that we can cut out unneeded outputs
-        res.add(cell & "\n")  
+        res.add(cell & "\n") 
+      break # we don't need all the file if just changing one line
     else:
       res.add(cell & "\n")
   writeFile(jnTempDir / "codecells.nim", res)

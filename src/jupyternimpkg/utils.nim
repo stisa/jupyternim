@@ -3,7 +3,8 @@ import strutils, times, random, hmac, nimSHA2, md5, zmq
 template debug*(str: varargs[string, `$`]) =
   when not defined(release):
     let inst = instantiationinfo()
-    echo "[" & $inst.filename & ":" & $inst.line & "] ", str.join(" ")
+    stderr.writeLine("[" & $inst.filename & ":" & $inst.line & "] ", str.join(" "))
+    stderr.flushFile
   else:
     discard
 
