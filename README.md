@@ -1,7 +1,7 @@
 Jupyter Nim
 ====
 
-This is an experimental nim version of a kernel for [jupyter notebooks](http://jupyter.org/). 
+This is an experimental nim version of a kernel for [jupyter](http://jupyter.org/). Tried with `notebook` and `lab`.
 
 ~~Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`  through
 a simple wrapper around `matplotlib` provided [here](jupyternimpkg/pyplot.nim). **Only python 3 is supported.**~~
@@ -21,6 +21,7 @@ Installation
 TL,DR: two commands:
 ```
 nimble install https://github.com/stisa/jupyternim
+
 jupyternim
 ```
 Done!
