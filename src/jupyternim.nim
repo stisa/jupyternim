@@ -1,5 +1,5 @@
 import ./jupyternimpkg/[sockets, messages, utils]
-import os, osproc, threadpool, zmq, json, std/exitprocs
+import os, osproc, json, std/exitprocs
 from osproc import execProcess
 from strutils import contains, strip
 
@@ -24,17 +24,17 @@ proc initKernel(connfile: string): Kernel =
   debug "Initing from: ", connfile, " exists: ", connfile.fileExists, weirdPathExpand(connfile).fileExists
   if not weirdPathExpand(connfile).fileExists:
     quit(1)
-  let connmsg = weirdPathExpand(connfile).parseConnMsg()
+  #let connmsg = weirdPathExpand(connfile).parseConnMsg()
+  let connmsg = connfile.parseConnMsg()
   if not dirExists(jnTempDir): 
     # Ensure temp folder exists
     createDir(jnTempDir)
 
   result.hb = createHB(connmsg.ip, connmsg.hb_port) # Initialize the heartbeat socket
-  result.pub = createIOPub(connmsg.ip, connmsg.iopub_port, connmsg.key) # Initialize iopub
-  result.shell = createShell(connmsg.ip, connmsg.shell_port, connmsg.key,
+  result.pub = createIOPub(connmsg.ip, connmsg.iopub_port) # Initialize iopub
+  result.shell = createShell(connmsg.ip, connmsg.shell_port,
       result.pub) # Initialize shell
-  result.control = createControl(connmsg.ip, connmsg.control_port,
-      connmsg.key) # Initialize iopub
+  result.control = createControl(connmsg.ip, connmsg.control_port) # Initialize iopub
   
   result.running = true
 
@@ -94,28 +94,24 @@ setControlCHook(proc(){.noconv.} =
 
 proc run(k: Kernel) =
   debug "Starting kernel"
-  kernel.hb.beat
-  kernel.pub.sendState("starting")
 
   #spawn kernel.hb.beat()
   debug "Entering main loop"
-  kernel.pub.sendState("idle")
-
   while kernel.running:
     # this is gonna crash due to timeouts... or make the pc explode with messages
-    kernel.hb.beat
-    if kernel.control.hasMsgs:
-      #debug "control..."
-      kernel.control.receive()
     
     if kernel.shell.hasMsgs:
-      #debug "shell..."
+      debug "shell..."
       kernel.shell.receive()
     
-    if kernel.pub.hasMsgs:
-      #debug "pub..."
-      kernel.pub.receive()
+    if kernel.control.hasMsgs:
+      debug "control..."
+      kernel.control.receive()
     
+    if kernel.pub.hasMsgs:
+      debug "pub..."
+      kernel.pub.receive()
+
     sleep(100) # wait a bit before trying again TODO: needed?
 
 kernel.run()

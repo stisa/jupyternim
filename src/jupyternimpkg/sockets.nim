@@ -8,13 +8,11 @@ type
 
   IOPub* = object
     socket*: TConnection
-    key: string
     lastmsg: WireMessage #why?
 
   #TODO: encapsulate code better, why is stuff from shell exported?
   Shell* = object
     socket*: TConnection
-    key: string    # session key
     pub*: IOPub     # keep a reference to pub so we can send status message
     count: Natural # Execution counter
     code: OrderedTable[string, string] # hold the code for cells that compile as a cellId:code table
@@ -23,7 +21,6 @@ type
 
   Control* = object
     socket*: TConnection
-    key: string
   
   Channels* = concept s
     s.socket is TConnection
@@ -38,10 +35,10 @@ proc hasMsgs*(s: Channels): bool = getsockopt[int](s.socket, EVENTS) == 3
 proc close*(s: Channels) = s.socket.close()
 proc receiveMsg(s: Channels): WireMessage = decode(s.socket.recv_multipart)
 
-proc sendMsg*(s: Channels, reply_type: string,
-  content: JsonNode, key: string, parent: varargs[WireMessage]) =
-  let encoded = encode(reply_type, content, key, parent)
-  #debug "Encoded ", reply_type
+proc sendMsg*(s: Channels, reply_type: WireType,
+  content: JsonNode, parent: varargs[WireMessage]) =
+  let encoded = encode(reply_type, content, parent)
+  debug "Encoded ", reply_type
   s.socket.send_multipart(encoded)
 
 
@@ -51,33 +48,22 @@ proc createHB*(ip: string, hbport: BiggestInt): Heartbeat =
   result.socket = zmq.listen("tcp://" & ip & ":" & $hbport, zmq.REP)
   result.alive = true
 
-proc beat*(hb: Heartbeat) =
-  ## Execute the heartbeat loop.
-  ## Usually ``spawn``ed to avoid killing the kernel when it's busy
-  #debug "starting hb loop..."
-  #while hb.alive:
-  var s: string
-  try:
-    s = hb.socket.receive(zmq.DONTWAIT) # Read from socket
-    #debug "echoing hb"
-    hb.socket.send(s) # Echo back what we read
-  except EZmq as ez:
-    discard
-    #debug "exception in Heartbeat Loop", ez.msg
 
 proc close*(hb: var Heartbeat) =
   hb.alive = false
   hb.socket.close()
 
 ## IOPub Socket
-proc createIOPub*(ip: string, port: BiggestInt, key: string): IOPub =
+proc createIOPub*(ip: string, port: BiggestInt): IOPub =
   ## Create the IOPub socket
 # TODO: transport
   result.socket = zmq.listen("tcp://" & ip & ":" & $port, zmq.PUB)
-  result.key = key
 
-proc sendState*(pub: IOPub, state: string ) {.inline.} =
-  pub.sendMsg("status", %* {"execution_state": state}, pub.key)
+proc sendState*(pub: IOPub, state: string, parent:varargs[WireMessage] ) {.inline.} =
+  if len(parent) != 0:
+    pub.sendMsg(status, %* {"execution_state": state}, parent[0])
+  else:
+    pub.sendMsg(status, %* {"execution_state": state})
 
 proc receive*(pub: IOPub) =
   ## Receive a message on the IOPub socket
@@ -181,11 +167,10 @@ proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, 
   else:
     result = execCmdEx(r"nim c " & flatten(flags) & flatten(requiredFlags) & jnTempDir / "codecells.nim") # compile the codeserver
 
-proc createShell*(ip: string, shellport: BiggestInt, key: string,
-    pub: IOPub): Shell =
+proc createShell*(ip: string, shellport: BiggestInt, pub: IOPub): Shell =
   ## Create a shell socket
+  debug "shell at ", ip, " ", shellport
   result.socket = zmq.listen("tcp://" & ip & ":" & $shellport, zmq.ROUTER)
-  result.key = key
   result.pub = pub
   # add the import to the codecells of shell, 
   # this way it will be there when generating the code to be run
@@ -212,15 +197,23 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
     "banner": ""
   }
 
-  s.sendMsg("kernel_info_reply", content, s.key, m)
+  s.sendMsg(kernel_info_reply, content, m)
 
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   ## Handle the ``execute_request`` message
+  debug "HANDLEEXECUTE\n", msg
   inc shell.count
 
   let 
     code = msg.content["code"].str # The code to be executed
-    cellId = msg.metadata["cellId"].str # The code to be executed
+    # this "fixes" cases in which the frontend doesn't expose the cellid, by 
+    # using the message id of the execute_req message.
+    # Problem: this destroys the ability to re-run a cell since there's no
+    # way to map the cell being re run to its old code
+    # TODO: open issues for vscode-python, nteract to expose this
+    cellId =  if msg.metadata.hasKey("cell_id"): msg.metadata["cell_id"].str
+              else: msg.header.msg_id
+  
   shell.executingCellId = cellId
 
   shell.pub.lastmsg = msg # update execute msg
@@ -254,7 +247,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       "execution_count": shell.count,
       "code": code,
   }
-  shell.pub.sendMsg("execute_input", content, shell.key, msg)
+  shell.pub.sendMsg(execute_input, content, msg)
 
   # Compile and send compilation messages to jupyter's stdout
   shell.code[cellId] = code
@@ -287,7 +280,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       "name": streamName, 
       "text": compilationResult.output
     }
-    shell.pub.sendMsg("stream", content, shell.key, msg)
+    shell.pub.sendMsg(stream, content, msg)
 
     content = %* {
       "status": status,
@@ -295,13 +288,13 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       "evalue": "Error", # Exception value, as a string
       "traceback": nil, # traceback frames as strings, TODO:
     }
-    shell.pub.sendMsg("error", content, shell.key, msg)
+    shell.pub.sendMsg(WireType.error, content, msg)
     # Tell the frontend execution failed from shell
     content = %* {
       "status": status,
       "execution_count": shell.count,
     }
-    shell.sendMsg("execution_reply", content, shell.key, msg)
+    shell.sendMsg(execute_reply, content, msg)
     
     return
 
@@ -311,7 +304,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   content = %*{"name": streamName, "text": compilationResult.output}
 
   # Send compiler messages
-  shell.pub.sendMsg("stream", content, shell.key, msg)
+  shell.pub.sendMsg(WireType.stream, content, msg)
 
   # Since the compilation was fine, run code and send results with iopub
   var exec_out: string
@@ -356,7 +349,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       ddend = exec_out.rfind("#<outjndd>#")
     let dddata = exec_out[ddstart+len("#<jndd>#")..<ddend]
     content = parseJson(dddata)
-    shell.pub.sendMsg("display_data", content, shell.key, msg)
+    shell.pub.sendMsg(display_data, content, msg)
     exec_out = exec_out.replace(dddata, "") # clear out the base64 img from the output
   
   content = %*{
@@ -364,7 +357,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       "data": {"text/plain": exec_out}, # TODO: detect and handle other mimetypes
       "metadata": %*{}
   }
-  shell.pub.sendMsg("execute_result", content, shell.key, msg)
+  shell.pub.sendMsg(execute_result, content, msg)
 
   # Tell the frontend execution was ok, or not from shell
   content = %* {
@@ -373,7 +366,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     "payload": {},
     "user_expressions": {},
   }
-  shell.sendMsg("execution_reply", content, shell.key, msg)
+  shell.sendMsg(execute_reply, content, msg)
 
 proc parseNimsuggest(nims: string): tuple[found: bool, data: JsonNode] =
   # nimsuggest output is \t separated
@@ -381,6 +374,17 @@ proc parseNimsuggest(nims: string): tuple[found: bool, data: JsonNode] =
   discard
 
 proc handleIntrospection(shell: Shell, msg: WireMessage) =
+  #[ reply
+    content = {
+    # 'ok' if the request succeeded or 'error', with error information as in all other replies.
+    'status' : 'ok',
+    # found should be true if an object was found, false otherwise
+    'found' : bool,
+    # data can be empty if nothing is found
+    'data' : dict,
+    'metadata' : dict,
+    }
+  ]#
   let code = msg.content["code"].str
   let cpos = msg.content["cursor_pos"].num.int
   if code[cpos] == '.':
@@ -394,7 +398,7 @@ proc handleIntrospection(shell: Shell, msg: WireMessage) =
     "data": {},     #TODO nimsuggest??
     "metadata": {},
   }
-  shell.sendMsg("inspect_reply", content, shell.key, msg)
+  shell.sendMsg(inspect_reply, content, msg)
 
 proc handleCompletion(shell: Shell, msg: WireMessage) =
 
@@ -477,8 +481,8 @@ proc handleCompletion(shell: Shell, msg: WireMessage) =
     # in other messages. Currently assuming it won't error.
     "status": "ok"
   }
-# debug msg
-  shell.sendMsg("complete_reply", content, shell.key, msg)
+  # debug msg
+  shell.sendMsg(complete_reply, content, msg)
 
 proc handleHistory(shell: Shell, msg: WireMessage) =
   debug "Unhandled history"
@@ -490,30 +494,43 @@ proc handleHistory(shell: Shell, msg: WireMessage) =
     "history": [],
   }
 
+
+proc handleCommInfo(s: Shell, msg: WireMessage) =
+  debug "CommInfoReq"
+  if msg.content.hasKey("target_name"):
+    debug "CommInfo about ", msg.content["target_name"].getStr
+    # A dictionary of the comms, indexed by uuids (comm_id).
+    #[content = {  'comms': { comm_id: { 'target_name': str,  },    }, }]#
+    var content = %* { "comms": {} } # TODO: don't care
+    s.sendMsg(WireType.comm_info_reply, content, msg)
+
 proc handle(s: var Shell, m: WireMessage) =
-  #debug "shell: handle ", m.msg_type
-  if m.msg_type == Kernel_Info:
+  debug "shell: handle ", m.msg_type
+  case m.msg_type
+  of kernelInfoRequest:
+    debug "Sending Kernel info"
     handleKernelInfo(s, m)
-  elif m.msg_type == Execute:
+  of executeRequest:
     handleExecute(s, m)
-  elif m.msg_type == Shutdown:
+  of shutdownRequest:
     debug "kernel wants to shutdown"
     quit()
-  elif m.msg_type == Introspection: handleIntrospection(s, m)
-  elif m.msg_type == Completion: handleCompletion(s, m)
-  elif m.msg_type == History: handleHistory(s, m)
+  of inspectRequest: handleIntrospection(s, m)
+  of completeRequest: handleCompletion(s, m)
+  of historyRequest: handleHistory(s, m)
+  of commInfoRequest: handleCommInfo(s, m)
   else:
     debug "unhandled message: ", m.msg_type
 
 proc receive*(shell: var Shell) =
   ## Receive a message on the shell socket, decode it and handle operations
   let recvdmsg: WireMessage = shell.receiveMsg()
-  #debug "shell: ", $recvdmsg.msg_type
+  debug "shell: ", $recvdmsg.msg_type
   #debug recvdmsg.content
   #debug "end shell"
-  shell.pub.sendState("busy")
+  shell.pub.sendState("busy", recvdmsg)
   shell.handle(recvdmsg)
-  shell.pub.sendState("idle")
+  shell.pub.sendState("idle", recvdmsg)
 
 proc close*(sl: var Shell) =
   sl.socket.close()
@@ -522,19 +539,20 @@ proc close*(sl: var Shell) =
 
 
 ## Control socket
-proc createControl*(ip: string, port: BiggestInt, key: string): Control =
+proc createControl*(ip: string, port: BiggestInt): Control =
   ## Create the control socket
   result.socket = zmq.listen("tcp://" & ip & ":" & $port, zmq.ROUTER)
-  result.key = key
+
 
 proc handle(c: Control, m: WireMessage) =
-  if m.msg_type == Shutdown:
+  if m.msg_type == shutdown_request:
     #var content : JsonNode
     debug "shutdown requested"
     #content = %* { "restart": false }
-    c.sendMsg("shutdown_reply", m.content, c.key, m)
+    c.sendMsg(shutdown_reply, m.content, m)
     quit()
-  #if m.msg_type ==
+  else:
+    debug "Control: unhandled message ", m.msg_type
 
 proc receive*(cont: Control) =
   ## Receive a message on the control socket and handle operations

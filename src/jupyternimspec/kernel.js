@@ -464,7 +464,7 @@ codecell.CodeCell.prototype.execute = function (stop_on_error) {
   // Patch: add cellId to metadata to match JupyterLab
   var split_uuid = i=>i.substr(0,8)+"-"+i.substr(8,4)+"-"+i.substr(12,4)+"-"+i.substr(16,4)+"-"+i.substr(20);
   this.last_msg_id = this.kernel.execute(this.get_text(), callbacks, {silent: false, store_history: true,
-      stop_on_error : stop_on_error}, {cellId: split_uuid(this.cell_id) });
+      stop_on_error : stop_on_error}, {cell_id: split_uuid(this.cell_id) });
   // end patch
   codecell.CodeCell.msg_cells[this.last_msg_id] = this;
   this.render();

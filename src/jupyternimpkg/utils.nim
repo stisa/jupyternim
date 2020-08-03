@@ -12,7 +12,7 @@ const validx = ['A', 'B', 'C', 'D', 'E', 'F',
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 const validy = ['8', '9', '0', 'B']
 
-proc genUUID*(nb, upper: bool = true): string =
+proc genUUID*(nb:bool=false, upper: bool = false): string =
   ## Generate a uuid version 4.
   ## If ``nb`` is false, the uuid is compatible with IPython console.
   result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
