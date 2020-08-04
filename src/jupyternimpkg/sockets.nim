@@ -199,19 +199,35 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
 
   s.sendMsg(kernel_info_reply, content, m)
 
+const MagicsStrings = ["#>flags", "#>clear all"]
+#[TODO: find an efficient way to do the following
+        (since it's unlikely that a lot of flags are present, looping all lines is not a good idea)
+proc handleMagics(codeseq: seq[string])
+  for line in codeseq:
+    if line.startsWith(MagicsStrings[0]):
+      flags = code[MagicsStrings[0].len+1..^1].split()
+      debug "with custom flags:", flags.flatten
+    elif line.startsWith...
+      ]#
+
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   ## Handle the ``execute_request`` message
   #debug "HANDLEEXECUTE\n", msg
   inc shell.count
 
+  #TODO: in the future outputs will become a seq[string] so that
+  # streams can be sent line by line
   let 
     code = msg.content["code"].str # The code to be executed
     # this "fixes" cases in which the frontend doesn't expose the cellid, by 
-    # using the message id of the execute_req message.
-    # Problem: this destroys the ability to re-run a cell since there's no
-    # way to map the cell being re run to its old code
-    # TODO: open issues for vscode-python, nteract to expose this
+    # requiring users to add a #>cellId:<something> to their cell code.
+    # If they don't, we use the message id of the execute_req message.
+    # Problem: this last way destroys the ability to track a cell since there's no
+    # way to map the cell being re run to its old code, causing compilation errors
+    # very fast
+    # TODO: follow up issues for vscode-python, nteract to expose this in the cell
     cellId =  if msg.metadata.hasKey("cellId"): msg.metadata["cellId"].str
+              elif code.startsWith("#>cellId"): code.splitLines()[0]
               else: msg.header.msg_id
   
   shell.executingCellId = cellId
@@ -226,9 +242,9 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       flagend = if nwline != -1: nwline else: code.len
     flags = code[flagstart..flagend].split()
 
-  debug "with flags:", flags.flatten
+    debug "with custom flags:", flags.flatten
 
-  if code.contains("#>clear all") and dirExists(getHomeDir() / "inimtemp"):
+  if code.contains("#>clear all") and dirExists(jnTempDir):
     debug "Cleaning up..."
     flags = @defaultFlags
     removeDir(jnTempDir)
