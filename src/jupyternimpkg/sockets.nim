@@ -68,7 +68,7 @@ proc sendState*(pub: IOPub, state: string, parent:varargs[WireMessage] ) {.inlin
 proc receive*(pub: IOPub) =
   ## Receive a message on the IOPub socket
   let recvdmsg: WireMessage = pub.receiveMsg()
-  debug "pub received:\n", $recvdmsg
+  #debug "pub received:\n", $recvdmsg
 
 
 ## Shell Socket
@@ -169,7 +169,7 @@ proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, 
 
 proc createShell*(ip: string, shellport: BiggestInt, pub: IOPub): Shell =
   ## Create a shell socket
-  debug "shell at ", ip, " ", shellport
+  #debug "shell at ", ip, " ", shellport
   result.socket = zmq.listen("tcp://" & ip & ":" & $shellport, zmq.ROUTER)
   result.pub = pub
   # add the import to the codecells of shell, 
@@ -201,7 +201,7 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
 
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   ## Handle the ``execute_request`` message
-  debug "HANDLEEXECUTE\n", msg
+  #debug "HANDLEEXECUTE\n", msg
   inc shell.count
 
   let 
@@ -211,7 +211,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     # Problem: this destroys the ability to re-run a cell since there's no
     # way to map the cell being re run to its old code
     # TODO: open issues for vscode-python, nteract to expose this
-    cellId =  if msg.metadata.hasKey("cell_id"): msg.metadata["cell_id"].str
+    cellId =  if msg.metadata.hasKey("cellId"): msg.metadata["cellId"].str
               else: msg.header.msg_id
   
   shell.executingCellId = cellId
@@ -324,13 +324,13 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       exec_out &= tmp & "\n"
   else:
     exec_out = execProcess(jnTempDir / outCodeServerName)
-    debug exec_out
+    #debug exec_out
     # we are only interested in new output
     let execoutsplit = exec_out.rsplit("#>newcodeout")
-    debug "Split length ", len(execoutsplit)
+    #debug "Split length ", len(execoutsplit)
     if execoutsplit.len > 0: exec_out = execoutsplit[^1]
   
-  debug "done reading, read: ", exec_out
+  #debug "done reading, read: ", exec_out
   
   # TODO: don't assume no errors are possible at runtime, 
   #       check for errors there too

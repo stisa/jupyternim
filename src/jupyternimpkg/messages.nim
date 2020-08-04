@@ -88,7 +88,6 @@ proc decode*(raw: openarray[string]): WireMessage =
   doAssert(raw[1] == "<IDS|MSG>", "Malformed message follows:\n" & $raw & "\nMalformed message ends\n")
 
   result.signature = raw[2]
-  debug parseJson(raw[3])
   try:
     result.header = parseJson(raw[3]).to(WireHeader)
   except KeyError as e:
@@ -105,7 +104,8 @@ proc decode*(raw: openarray[string]): WireMessage =
     result.parent_header = none(WireHeader)
   result.metadata = parseJson(raw[5])
   result.content = parseJson(raw[6])
-
+  
+  debug "METADATA", result.metadata
   result.msg_type = result.header.msg_type
 
   if result.msg_type == Unknown:
