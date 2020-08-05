@@ -88,9 +88,10 @@ else:
 const jnTempDir* = getHomeDir() / ".jupyternim"
 
 # ORDER IS IMPORTANT 
-const defaultFlags = ["", #"--nimcache:" & (jnTempDir).escape,
+const defaultFlags = ["", # for HCR
                       "-d:release",
-                      "--verbosity:0"]
+                      "--verbosity:0",
+                      "--hint[Processing]:off"]
                       
 
 const requiredFlags = ["-d:jupyter", "-o:" & jnTempDir / outCodeServerName]
@@ -501,7 +502,7 @@ proc handleCompletion(shell: Shell, msg: WireMessage) =
   shell.sendMsg(complete_reply, content, msg)
 
 proc handleHistory(shell: Shell, msg: WireMessage) =
-  debug "Unhandled history"
+  debug "Unhandled: history"
   var content = %* {
     # A list of 3 tuples, either:
       # (session, line_number, input) or
@@ -509,15 +510,19 @@ proc handleHistory(shell: Shell, msg: WireMessage) =
       # depending on whether output was False or True, respectively.
     "history": [],
   }
+  shell.sendMsg(history_reply, content, msg)
 
 
 proc handleCommInfo(s: Shell, msg: WireMessage) =
-  debug "CommInfoReq"
+  debug "Unhandled: CommInfoReq"
   if msg.content.hasKey("target_name"):
     debug "CommInfo about ", msg.content["target_name"].getStr
     # A dictionary of the comms, indexed by uuids (comm_id).
     #[content = {  'comms': { comm_id: { 'target_name': str,  },    }, }]#
-    var content = %* { "comms": {} } # TODO: don't care
+    var content = %* { "comms":  {} } # TODO: don't care
+    s.sendMsg(WireType.comm_info_reply, content, msg)
+  else:
+    var content = %* { "comms":  {} } # TODO: don't care
     s.sendMsg(WireType.comm_info_reply, content, msg)
 
 proc handle(s: var Shell, m: WireMessage) =

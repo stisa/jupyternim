@@ -84,6 +84,11 @@ proc decode*(raw: openarray[string]): WireMessage =
   ## decoedes a wire message as a seq of string blobs into a WireMessage object
   ## FIXME: only handles the first 7 parts, the extra raw data is discarded
   result.ident = raw[0]
+  #debug "IN"
+  debug raw
+  if len(raw)>7:
+    debug "BUFFERS", raw[8]
+
 
   doAssert(raw[1] == "<IDS|MSG>", "Malformed message follows:\n" & $raw & "\nMalformed message ends\n")
 
@@ -155,6 +160,10 @@ proc encode*(reply_type: WireType, content: JsonNode,
   result &= encodedParent
   result &= $metadata
   result &= $content
+  #result &= "{}" #empty buffers
+
+  debug "OUT"
+  debug result
 
 type 
   CommKind {.pure.} = enum
