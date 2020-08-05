@@ -15,3 +15,6 @@ requires "nimSHA2"
 installDirs = @["jupyternimpkg", "jupyternimspec"]
 srcDir = "src"
 bin = @["jupyternim"]
+
+after install:
+  exec("jupyternim")
