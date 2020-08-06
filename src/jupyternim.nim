@@ -31,11 +31,17 @@ proc installKernelSpec() =
 
   writeFile(pkgDir / "jupyternimspec"/"kernel.json", $kernelspec)
   echo execProcess(r"jupyter-kernelspec install " & pkgDir / "jupyternimspec" &
-      " --user") # install the spec
+      " --user").strip(leading=false) # install the spec
   echo "[Jupyternim] Nim kernel registered, you can now try it in `jupyter lab`"
+  when defined useHcr:
+    echo "[Jupyternim] Note: this jupyternim has hotcodereloading:on, it is **very** unstable"
+    echo "[Jupyternim] Please report any issues to https://github.com/stisa/jupyternim"
   quit(0)
 
 proc initKernel(connfile: string): Kernel =
+  when defined useHcr:
+    echo "[Jupyternim] You're running jupyternim with hotcodereloading:on, it is **very** unstable"
+    echo "[Jupyternim] Please report any issues to https://github.com/stisa/jupyternim"
   debug "Initing from: ", connfile, " exists: ", connfile.fileExists
   if not connfile.fileExists:
     debug "Connection file doesn't exit at ", connfile
