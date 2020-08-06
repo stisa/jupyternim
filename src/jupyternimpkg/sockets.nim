@@ -37,9 +37,9 @@ proc hasMsgs*(s: Channels): bool = getsockopt[int](s.socket, EVENTS) == 3
 proc close*(s: Channels) = s.socket.close()
 proc receiveMsg(s: Channels): WireMessage = decode(s.socket.recv_multipart)
 
-proc sendMsg*(s: Channels, reply_type: string,
-  content: JsonNode, key: string, parent: varargs[WireMessage]) =
-  let encoded = encode(reply_type, content, key, parent)
+proc sendMsg*(s: Channels, reply_type: WireType,
+  content: JsonNode, parent: varargs[WireMessage]) =
+  let encoded = encode(reply_type, content, parent)
   #debug "Encoded ", reply_type
   s.socket.send_multipart(encoded)
 
@@ -127,8 +127,11 @@ proc writeCodeFile(codecells: openArray[string]) =
   ## The last cell is wrapped in a proc so that it gets run by the codeserver
   ## and produces output. 
   var res = ""
-  for i, cell in codecells:
-    if i==codecells.len-1: 
+  #debug shell.code
+  for k, cell in shell.code:
+    if k == shell.executingCellId:
+      # save the lastmsg to a string in case we want to use it in display
+      #res.add("jnparentmsg = " & ($(%* shell.pub.lastmsg)).escapeJson) #omg the json escaping
       when defined useHcr:
         # wrap the last cell in the hoist macro:
         res.add("hoist:\n")
@@ -160,16 +163,20 @@ proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, 
   ## Returns the compiler output as a string
   if firstInit:
     debug "Write out codeserver"
+    # hcr needs at least one extra cell to generate the initial proc
+    shell.executingCellId = "hcrFirst"
+    shell.code[shell.executingCellId] = "discard \"Generated for Hcr\""
     writeFile(jnTempDir/"codeserver.nim", codeserver) 
   
   debug "Write out codecells"
   writeCodeFile(shell.codecells)
 
   when defined useHcr:
-    debug "Ensuring codeserver is alive"
-    if not firstInit and not shell.codeserver.running:
-      debug "The codeserver died, trying to restart it..."
-      shell.codeserver = shell.startCodeServer()
+    if not firstInit:
+      debug "Ensuring codeserver is alive"
+      if not shell.codeserver.running:
+        debug "The codeserver died, trying to restart it..."
+        shell.codeserver = shell.startCodeServer()
 
   debug "Recompile codeserver"
   when defined useHcr:
@@ -212,7 +219,27 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   ## Handle the ``execute_request`` message
   inc shell.count
-  let code = msg.content["code"].str # The code to be executed
+
+  #TODO: in the future outputs will become a seq[string] so that
+  # streams can be sent line by line
+  let 
+    code = msg.content["code"].str # The code to be executed
+    # this "fixes" cases in which the frontend doesn't expose the cellid, by 
+    # requiring users to add a #>cellId:<something> to their cell code.
+    # If they don't, we use the message id of the execute_req message.
+    # Problem: this last way destroys the ability to track a cell since there's no
+    # way to map the cell being re run to its old code, causing compilation errors
+    # very fast
+    # TODO: follow up issues for nteract to expose this in the cell
+    cellId =  if msg.metadata.hasKey("cellId"): msg.metadata["cellId"].str
+              elif code.startsWith("#>cellId"): code.splitLines()[0]
+              else: msg.header.msg_id
+  
+  shell.executingCellId = cellId
+  # to prevent reordering of cells due to popping them in case they don't compile, 
+  # keep a record of the last code that was in this spot.
+  let lastTimeCellCode = shell.code.getOrDefault(shell.executingCellId)
+  shell.pub.lastmsg = msg # update execute msg
 
   # TODO: move the logic that deals with magics and flags somewhere else
   if code.contains("#>flags"):  
@@ -262,9 +289,9 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     
     # execution not ok, remove last cell
     
-    #debug "Compilation error, discarding last code cell"
-    let discardedCell = shell.codecells.pop()
-    debug "Discarded:" & discardedCell
+    debug "Reverted cell from:" & shell.code[cellId]
+    shell.code[cellId] = lastTimeCellCode # restore the code that was here before this failure
+
     #debug "file after:"
     #debug readFile(jnTempDir / "codecells.nim")
     #debug "file end"

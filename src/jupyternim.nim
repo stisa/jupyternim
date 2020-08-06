@@ -39,65 +39,29 @@ proc shutdown(k: var Kernel) {.noconv.} =
     removeDir(jnTempDir) # Remove temp dir on exit
     debug "Removed /.jupyternim"
 
-let arguments = commandLineParams() # [0] should always be the connection file
+proc runKernel(connfile:string) =
+  ## Main loop: this is executed when jupyter starts the kernel
+  
+  var kernel: Kernel = initKernel(connfile)
 
-### Install the kernel, executed when running jupyternim directly
+  addExitProc(proc() = kernel.shutdown())
+  setControlCHook(proc(){.noconv.}=quit())
+  
+  kernel.loop()
 
-if arguments.len < 1: 
-  # no connection file passed: assume we're registering the kernel with jupyter
-  echo "Installing Jupyter Nim Kernel"
-  var pkgDir = execProcess("nimble path jupyternim").strip()
-  var (h, t) = pkgDir.splitPath()
+let arguments = commandLineParams() # [0] is ususally the connection file
+case arguments.len:
+of 0: # no args, assume we are installing the kernel
+  installKernelSpec()
+of 1:
+  if arguments[0] == "-v":
+    echo "Jupyternim version: ", JNKernelVersion
+  elif arguments[0][^4..^1] == "json": # TODO: file splitFile bug with C:\Users\stisa\AppData\Roaming\jupyter\runtime\kernel-9f74a25e-d932-4212-98ae-693f8d18ed55.json
+    runKernel(arguments[0])
+  else:
+    echo "Unrecognized single argument: ", arguments[0]
+else:
+  echo "More than expected arguments: ", $arguments
+  if arguments[0][^2..^1] == "py": quit(1) # vscode-python shenanigans
 
-  let kernelspec = %*{
-    "argv": [ (if t == "src": h else: pkgDir) / "jupyternim",
-        "{connection_file}"],
-    "display_name": "Nim",
-    "language": "nim",
-    "file_extension": ".nim"}
-
-  writeFile(pkgDir / "jupyternimspec"/"kernel.json", $kernelspec)
-  echo execProcess(r"jupyter-kernelspec install " & pkgDir / "jupyternimspec" &
-      " --user") # install the spec
-  echo "Finished Installing, try running `jupyter notebook` and select New>Nim"
-  quit(0)
-
-#assert(arguments.len>=1, "Something went wrong, no file passed to kernel?")
-
-if arguments.len > 1:
-  echo "Unexpected extra arguments:"
-  echo arguments
-
-### Main loop: this part is executed when jupyter starts the kernel
-
-var kernel: Kernel = initKernel(arguments[0])
-
-addExitProc(proc(){.noconv.} = kernel.shutdown())
-
-setControlCHook(proc(){.noconv.} =
-  kernel.shutdown()
-  quit()
-) # Hope this fixes crashing at shutdown
-
-proc run(k: Kernel) =
-  debug "Starting kernel"
-  kernel.pub.sendState("starting")
-
-  spawn kernel.hb.beat()
-
-  while kernel.running:
-    if kernel.control.hasMsgs:
-      #debug "control..."
-      kernel.control.receive()
-    
-    if kernel.shell.hasMsgs:
-      #debug "shell..."
-      kernel.shell.receive()
-    
-    if kernel.pub.hasMsgs:
-      #debug "pub..."
-      kernel.pub.receive()
-    
-    sleep(100) # wait a bit before trying again TODO: needed?
-
-kernel.run()
+quit(0)

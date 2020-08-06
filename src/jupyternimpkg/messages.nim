@@ -69,12 +69,29 @@ proc decode*(raw: openarray[string]): WireMessage =
   ## decoedes a wire message as a seq of string blobs into a WireMessage object
   ## FIXME: only handles the first 7 parts, the extra raw data is discarded
   result.ident = raw[0]
+  #debug "IN"
+  #debug raw
+  if len(raw)>7:
+    debug "BUFFERS", raw[8]
+
 
   doAssert(raw[1] == "<IDS|MSG>", "Malformed message follows:\n" & $raw & "\nMalformed message ends\n")
 
   result.signature = raw[2]
-  result.header = parseJson(raw[3])
-  result.parent_header = parseJson(raw[4])
+  try:
+    result.header = parseJson(raw[3]).to(WireHeader)
+  except KeyError as e:
+    var jsonheader = parseJson(raw[3]) 
+    debug e.msg, "json: ", parseJson(raw[3])
+    #if spec 5.2 date isn't here???
+    jsonheader["date"] = % ""
+    result.header = jsonheader.to(WireHeader)
+  try:
+    result.parent_header = some(parseJson(raw[4]).to(WireHeader))
+  except KeyError as e:
+    var jsonheader = parseJson(raw[4])
+    debug e.msg, "parent json: ", jsonheader
+    result.parent_header = none(WireHeader)
   result.metadata = parseJson(raw[5])
   result.content = parseJson(raw[6])
 
@@ -151,3 +168,28 @@ proc encode*(reply_type: string, content: JsonNode, key: string,
   result &= $maybeParent.header
   result &= $metadata
   result &= $content
+  #result &= "{}" #empty buffers
+
+  #debug "OUT"
+  #debug result
+
+type 
+  CommKind {.pure.} = enum
+    Open, Close, Msg
+  Comm* = object
+    comm_id*: string # 'u-u-i-d',
+    data* : JsonNode # {}
+    case kind: CommKind
+    of CommKind.Open:
+      target_name*: string # 'my_comm', only for comm_open
+    else: discard
+
+
+proc openComm*(target: string, data: JsonNode = %* {} ): Comm =
+  result = Comm(kind: CommKind.Open, comm_id: genUUID(), target_name: target, data: data)
+
+proc comm*(c: Comm, data: JsonNode = %* {}): Comm =
+  result = Comm(kind: CommKind.Msg, comm_id: c.comm_id, data: data)
+
+proc closeComm*(c: Comm, data: JsonNode = %* {}): Comm =
+  result = Comm(kind: CommKind.Close, comm_id: c.comm_id, data: data)

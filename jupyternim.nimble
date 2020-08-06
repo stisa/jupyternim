@@ -14,4 +14,20 @@ requires "nimSHA2"
 
 srcDir = "src"
 
-bin = @["jupyternim"]
+task dev, "Build a debug version":
+  # Assumes cwd is jupyternim/
+  var jnpath = gorgeEx("nimble path jupyternim")
+  jnpath.output.stripLineEnd
+  if jnpath.exitCode == 0:
+    exec("nim c -d:debug -o:" & jnpath.output / bin[0].changeFileExt(ExeExt) & " src/jupyternim.nim")
+  else:
+    echo "Can't find an installed jupyternim"
+
+task hcr, "Build a debug version with -d:useHcr":
+  # Assumes cwd is jupyternim/
+  var jnpath = gorgeEx("nimble path jupyternim")
+  jnpath.output.stripLineEnd
+  if jnpath.exitCode == 0:
+    exec("nim c -d:debug -d:useHcr -o:" & jnpath.output / bin[0].changeFileExt(ExeExt) & " src/jupyternim.nim")
+  else:
+    echo "Can't find an installed jupyternim"
