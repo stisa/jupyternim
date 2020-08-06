@@ -3,7 +3,7 @@ import json, base64, streams, nimPNG
 export json.`$`
 
 type DisplayKind* = enum
-  dkPng, dkPlot, dkPngFile
+  dkPng, dkPlot, dkPngFile, dkHtml
 
 const startmarker = "#<jndd>#"
 const endmarker = "#<outjndd>#"
@@ -31,7 +31,14 @@ proc showBase64StringPng*(what:string, w:int=480,h:int=320): JsonNode =
       "data": {"image/png": what}, # TODO: handle other mimetypes
       "metadata": %*{"image/png": {"width": w, "height": h}}, #FIXME: sizes from 0000x0000
       "transient": %*{}
-    }
+  }
+
+proc showHtml*(what:string): JsonNode =
+  result = %*{
+      "data": {"text/html": what}, # TODO: handle other mimetypes
+      "metadata" : %*{},
+      "transient": %*{}
+  }
 
 template show*(kind:DisplayKind, size: array[2, int] = [480,320], what:untyped) =
   #TODO: find a way to print only if the current cellId is the executing one

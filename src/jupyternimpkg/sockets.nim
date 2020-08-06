@@ -1,5 +1,5 @@
 import zmq, json, os, osproc, strutils, base64, streams, tables
-import ./messages, ./utils
+import ./messages, ./utils, ./display
 
 type
   Heartbeat* = object
@@ -215,6 +215,39 @@ proc handleMagics(codeseq: seq[string])
     elif line.startsWith...
       ]#
 
+proc styledOutput(s:string):string =
+  result = ""
+  if s == "": return
+  let last = s.countLines-1
+  var i = 0
+  for line in s.splitLines:
+    var tmp = "<span>"
+    if line.startsWith("Hint:"):
+      tmp.add("<small style=\"color: #00b479\">")
+      tmp.add(line[0..5])
+      tmp.add("</small>")
+      tmp.add(line[6..^1])
+    elif line.startsWith("Warning:"):
+      tmp.add("<small style=\"color: #f7ff00\">")
+      tmp.add(line[0..8])
+      tmp.add("</small>")
+      tmp.add(line[8..^1])
+    elif line.contains("Hint: "):
+      tmp.add(" <small style=\"color: #00b479\">Hint: </small>")
+      tmp.add(line[line.find("Hint: ")+len("Hint: ")..^1])
+    elif line.contains("Warning: "):
+      tmp.add(" <small style=\"color: #f7ff00\">Warning: </small>")
+      tmp.add(line[line.find("Warning: ")+len("Warning: ")..^1])
+    else:
+      tmp.add(line)
+    tmp.add("</span>")
+    if not (i==last):
+      tmp.add("<br/>")
+    inc i
+    result.add(tmp)
+      
+
+
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   ## Handle the ``execute_request`` message
   #debug "HANDLEEXECUTE\n", msg
@@ -321,11 +354,10 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
 
   status = "ok"
   streamName = "stdout"
-  
-  content = %*{"name": streamName, "text": compilationResult.output}
-
-  # Send compiler messages
-  shell.pub.sendMsg(WireType.stream, content, msg)
+  if not compilationResult.output.strip().len == 0:
+    content = showHtml(styledOutput(compilationResult.output))#
+    # Send compiler messages
+    shell.pub.sendMsg(WireType.display_data, content, msg)
 
   # Since the compilation was fine, run code and send results with iopub
   var exec_out: string
@@ -347,7 +379,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
     exec_out = execProcess(jnTempDir / outCodeServerName)
     #debug exec_out
     # we are only interested in new output
-    let execoutsplit = exec_out.rsplit("#>newcodeout")
+    let execoutsplit = exec_out.rsplit("#>newcodeout\n") #echo added a newline
     #debug "Split length ", len(execoutsplit)
     if execoutsplit.len > 0: exec_out = execoutsplit[^1]
   

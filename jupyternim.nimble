@@ -11,6 +11,7 @@ requires "nim >= 1.0.0"
 requires "zmq >= 0.3.1"
 requires "hmac"
 requires "nimSHA2"
+requires "nimPNG"
 
 installDirs = @["jupyternimpkg", "jupyternimspec"]
 srcDir = "src"

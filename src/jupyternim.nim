@@ -81,7 +81,7 @@ proc loop(kernel: var Kernel) =
         debug "ping..."
         kernel.hb.pong()
 
-      debug "Looped once"
+      #debug "Looped once"
       sleep(300) # wait a bit before trying again TODO: needed?
 
 proc shutdown(k: var Kernel) {.noconv.} =
