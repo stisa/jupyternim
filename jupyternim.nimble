@@ -15,7 +15,9 @@ requires "nimPNG"
 
 installDirs = @["jupyternimpkg", "jupyternimspec"]
 srcDir = "src"
+bin = @["jupyternim"]
 
+import os, strutils
 task dev, "Build a debug version":
   # Assumes cwd is jupyternim/
   var jnpath = gorgeEx("nimble path jupyternim")
