@@ -1,10 +1,8 @@
 Jupyter Nim
 ====
 
-This is an experimental nim version of a kernel for [jupyter notebooks](http://jupyter.org/). 
-
-~~Experimental plotting is available using the magic `#>inlineplot width height`, e.g. `#>inlineplot 640 480`  through
-a simple wrapper around `matplotlib` provided [here](jupyternimpkg/pyplot.nim). **Only python 3 is supported.**~~
+This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim. 
+Works with `notebook` and `lab`, should also work in VSCode.
   
 Look at [example-notebook](examples/example-notebook.ipynb) for some examples.  
 
@@ -18,16 +16,15 @@ Prereqs
 
 Installation 
 ------------
-TL,DR: two commands:
+TL,DR:
 ```
-nimble install https://github.com/stisa/jupyternim
-jupyternim
+nimble install https://github.com/stisa/jupyternim -y
 ```
 Done!
 
 ### Long version:
 
-The kernel should be automatically compiled by doing `nimble install jupyternim` ( or `nimble install https://github.com/stisa/jupyternim` if it's not in nimble yet).
+The kernel should be automatically compiled and register by doing `nimble install jupyternim` ( or `nimble install https://github.com/stisa/jupyternim` if it's not in nimble yet).
   
 Now you need to run `jupyternim` to register the kernel with jupyter (you can run `jupyternim` directly if you have `.nimble/bin` in your path, or run it from
 `<nimblepath>/pkgs/jupyternim-####`). 
@@ -73,64 +70,86 @@ test defined
 ```
 TODO: provide a way to override default compilation output file
 
-**delete old temp files**
+### Delete old temp files
 `#>clear all`
 
-**displaying an image**
-To display a PNG image, simply echo its base64 encode delimited by `#>jnps0000x0000` and `jnps<#` where `0000x0000` is the display resolution.
-An example of how to implement this can be seen [in graph](https://github.com/stisa/graph/blob/master/src/graph.nim#L16)
-
-For example, using that:
+### Displaying data
+To send back data to display, you can use the module [jupyternimpkg/display](src/jupyternimpkg/display.nim), example:  
 
 ```nim
-import graph, graph/draw
-from graph/funcs import exp
-let xx = linspace(0.0,10,1)
-var srf = plotXY(xx,exp(xx),Red,White)
-echo srf.jupyterPlotData
-echo 
+import nimPNG, jupyternimpkg/display
+
+#needs absolute path for now. 
+let file = r"C:\\Users\stisa\\.nimble\\pkgs\\jupyternim-0.5.1\\jupyternimspec\\logo-64x64.png"
+show dkPngFile, [64, 64]: # [width, height]
+    file
 ```
 
+If your file type is not supported by the `display` module yet, you need to implement the proc yourself.
+Just write to stdout a string containing a json object defined as
+```json
+{   //<data> is base64 encoded for binary formats, eg png
+    "data": {"<mimetype>": <data>}, 
+    "metadata": {"<mimetype>": {<mimespecific>}},
+    "transient": {}
+}
+```
+enclosed in `#<jndd>#` and `#<outjndd>#` markers.
+For example, to display a PNG image, simply:
+```nim
+import json, base64
+var 
+  img = readFile(path).encode # encode the png file with base64
+  w = 320 # displayed width
+  h = 240 # displayed height
+var content: JsonNode = %*{
+    "data": {"image/png": img }, 
+    "metadata": %*{"image/png": {"width": w, "height":h}},
+    "transient": %*{}
+  }
 
-State:
-------
-- Compiles and runs code.
-- Compiler output and results are shown.
-- Basic image handling
-- all code is re run on each cell added, but only output of the last cell is shown
-- hotcodereloading works well for simple code, but crashes with even slightly involved code, eg printing a float.
+echo "#<jndd>#" & $content $ "#<outjndd>#"
+```
+Consider sending a pr for the display module if you end up having to do this.
 
-TODO
+TODO:
 ----
 - Finish implementing messaging ( completion, introspection, history, display... )
 - Connect to nimsuggest via socket, parse its output for introspection requests
-- Documentation lookup magic? eg. put docs in a subfolder, then `#>doc sequtils` opens a browser to the correct `.html` page ( possibly local )  
-- Magics to reduce verbosity, ~~pass flags to compiler~~
-- Use nim plotly/ggplot/other nim plotting lib
+- Documentation lookup magic? 
+  - eg. put docs in a subfolder, then `#>doc sequtils` opens a browser to the correct `.html` page ( possibly local )  
 - improve hotcodereloading (probably needs work on the compiler side)
+- convince jupyter notebook maintainers to provide cellId, so I can stop patching the javascript
+- find a better way to fake a repl than re running prior code and discarding output
+- this readme should be a notebook?
+- use `JNsession` as name for temp files
 
-References
-----------
+General structure
+-----------------
+
+### [jupyternim](src/jupyternim.nim)
+Handles init, start, stop of the various loops, as well as initial installation of the kernelspec. 
+
+### [jupyternimpkg/messages](src/jupyternimpkg/messages.nim)
+Handles message specifications exposing low level procs to decode, encode messages
+
+### [jupyternimpkg/sockets](src/jupyternimpkg/sockets.nim)
+Defines sockets types, how they are created, how their loops work, how they send and receive messages
+
+### [jupyternimpkg/display](src/jupyternimpkg/display)
+Handle preparing and sending back data to display
+
+### [jupyternimspec](src/jupyternimspec/)
+Logos for jupyter, a `kernel.js` file to load syntax highlight and patch jupyter notebook to send
+a cellId.
+
+Internal Notes
+--------------
+Messages must be multipart  
+signature must be lowercase  
+http://nim-lang.org/docs/tinyc.html  
 
 [Jupyter Kernel Docs](https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernels)  
 [IHaskell](http://andrew.gibiansky.com/blog/ipython/ipython-kernels)  
 [Messaging Docs](https://jupyter-client.readthedocs.io/en/latest/messaging.html)  
 [Async logger in nim](https://hookrace.net/blog/writing-an-async-logger-in-nim/)  
-
-General structure
------------------
-
-### jupyternim
-Handles init, start, stop of the various loops. 
-
-### messages
-Handles message specifications exposing low level procs to decode, encode messages
-
-### sockets
-Defines sockets types , how they are created, how their loops work, how they send and receive messages
-
-Internal Notes
---------------
-Messages must be multipart
-signature must be lowercase
-http://nim-lang.org/docs/tinyc.html
