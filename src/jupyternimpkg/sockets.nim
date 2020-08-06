@@ -22,6 +22,9 @@ type
   Control* = object
     socket*: TConnection
   
+  StdIn* = object
+    socket*: TConnection
+  
   Channels* = concept s
     s.socket is TConnection
 
@@ -48,6 +51,9 @@ proc createHB*(ip: string, hbport: BiggestInt): Heartbeat =
   result.socket = zmq.listen("tcp://" & ip & ":" & $hbport, zmq.REP)
   result.alive = true
 
+proc pong*(hb: Heartbeat) =
+  var msg = hb.socket.receive()
+  hb.socket.send(msg)
 
 proc close*(hb: var Heartbeat) =
   hb.alive = false
@@ -68,12 +74,10 @@ proc sendState*(pub: IOPub, state: string, parent:varargs[WireMessage] ) {.inlin
 proc receive*(pub: IOPub) =
   ## Receive a message on the IOPub socket
   let recvdmsg: WireMessage = pub.receiveMsg()
-  #debug "pub received:\n", $recvdmsg
+  debug "pub received:\n", $recvdmsg
 
 
 ## Shell Socket
-
-var useHcr: bool = false # Hcr is highly experimental
 
 # TODO: move stuff related to codeserver somewhere else
 const codeserver = staticRead("codeserver.nim")
@@ -580,3 +584,39 @@ proc receive*(cont: Control) =
   let recvdmsg: WireMessage = cont.receiveMsg()
   debug "received: ", $recvdmsg.msg_type
   cont.handle(recvdmsg)
+
+
+## Stdin socket
+proc createStdIn*(ip: string, port: BiggestInt): StdIn =
+  ## Create the stdin socket
+  result.socket = zmq.listen("tcp://" & ip & ":" & $port, zmq.ROUTER)
+
+proc requestInput(c: StdIn, inputmsg: string, m: WireMessage) {.used.}=
+  doAssert m.msg_type == input_request
+  # TODO: inject a proc readLine(stdin:File):string that prints
+  # jnstdin to stdin, make execute watch for it in the stdin of startProcess(nimcodeserver)
+  # and then call requestInput and wait for stdin.receive which will be then print the
+  # `value` to stdin
+  debug "input requested"
+  var content = %* { 
+    # the text to show at the prompt
+    "prompt": inputmsg,
+    # Is the request for a password?
+    # If so, the frontend shouldn't echo input.
+    "password" : false
+  }
+  c.sendMsg(input_request, content, m)
+
+proc handle(c: StdIn, m: WireMessage) =
+  debug "Handle input reply"
+  # need to write this to the stdin of the executing compiled code
+  # means breaking a bunch of encapsulation? Maybe just add this
+  # logic to execute, by calling a requestInput 
+  echo m.content["value"]
+  
+
+proc receive*(sin: StdIn) =
+  ## Receive a message on the control socket and handle operations
+  let recvdmsg: WireMessage = sin.receiveMsg()
+  debug "received: ", $recvdmsg.msg_type
+  sin.handle(recvdmsg)

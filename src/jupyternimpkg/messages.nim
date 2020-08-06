@@ -12,7 +12,8 @@ type
     complete_request,
     comm_info_request,
     shutdown_request,
-    
+    input_request,
+
     kernel_info_reply,
     execute_reply,
     inspect_reply,
@@ -21,6 +22,7 @@ type
     complete_reply,
     comm_info_reply,
     shutdown_reply,
+    input_reply,
 
     status,
     execute_result,
@@ -65,9 +67,6 @@ type
     #not specced: kernel_name*: string
 
 var ConnKey: string
-let JNsession = genUUID()
-const JNuser = "kernel"
-const ProtocolVers = 5.3
 
 const iopubTopics = { execute_result , stream, display_data, update_display_data,
                     execute_input, error, status, clear_output, debug_event }
@@ -124,7 +123,7 @@ proc encode*(reply_type: WireType, content: JsonNode,
   ## Encode a message following wire spec
   
   var identities : string = ""
-  let header = initHeader(genUUID(), JNsession, JNuser, getISOstr(), reply_type, 5.3)
+  let header = initHeader(genUUID(), JNsession, JNuser, getISOstr(), reply_type, ProtocolVers)
 
   #[let header: JsonNode = %* {
     "msg_id": genUUID(), # typically UUID, must be unique per message

@@ -8,6 +8,10 @@ template debug*(str: varargs[string, `$`]) =
   else:
     discard
 
+const JNKernelVersion* = "0.5.1" # should match the one in the nimble file
+const JNuser* = "kernel"
+const ProtocolVers* = 5.3
+
 const validx = ['A', 'B', 'C', 'D', 'E', 'F', 
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 const validy = ['8', '9', '0', 'B']
@@ -59,3 +63,5 @@ proc filter*[T](seq1: openarray[T],
   for i in 0..<seq1.len:
     if pred(seq1[i]):
       result.add(seq1[i])
+
+let JNsession* = genUUID()

@@ -112,7 +112,7 @@ echo "#<jndd>#" & $content $ "#<outjndd>#"
 ```
 Consider sending a pr for the display module if you end up having to do this.
 
-TODO
+TODO:
 ----
 - Finish implementing messaging ( completion, introspection, history, display... )
 - Connect to nimsuggest via socket, parse its output for introspection requests
@@ -121,6 +121,8 @@ TODO
 - improve hotcodereloading (probably needs work on the compiler side)
 - convince jupyter notebook maintainers to provide cellId, so I can stop patching the javascript
 - find a better way to fake a repl than re running prior code and discarding output
+- this readme should be a notebook?
+- use `JNsession` as name for temp files
 
 General structure
 -----------------
