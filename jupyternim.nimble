@@ -16,5 +16,20 @@ installDirs = @["jupyternimpkg", "jupyternimspec"]
 srcDir = "src"
 bin = @["jupyternim"]
 
+import os, strutils
 after install:
-  exec("jupyternim")
+  var jnpath = gorgeEx("nimble path jupyternim")
+  jnpath.output.stripLineEnd
+  if jnpath.exitCode == 0:
+    exec(jnpath.output / bin[0].changeFileExt(ExeExt))
+  else:
+    echo "[Jupyternim]: automatically registering kernelspec failed, please run `jupyternim` from ~/.nimble/pkgs/jupyternim-<version>"
+
+task dev, "Build a debug version":
+  # Assumes cwd is jupyternim/
+  var jnpath = gorgeEx("nimble path jupyternim")
+  jnpath.output.stripLineEnd
+  if jnpath.exitCode == 0:
+    exec("nim c -d:debug -o:" & jnpath.output / bin[0].changeFileExt(ExeExt) & " src/jupyternim.nim")
+  else:
+    echo "Can't find an installed jupyternim"
