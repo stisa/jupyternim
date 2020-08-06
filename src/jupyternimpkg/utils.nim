@@ -3,15 +3,20 @@ import strutils, times, random, hmac, nimSHA2, md5, zmq
 template debug*(str: varargs[string, `$`]) =
   when not defined(release):
     let inst = instantiationinfo()
-    echo "[" & $inst.filename & ":" & $inst.line & "] ", str.join(" ")
+    stderr.writeLine("[" & $inst.filename & ":" & $inst.line & "] ", str.join(" "))
+    stderr.flushFile
   else:
     discard
+
+const JNKernelVersion* = "0.5.1" # should match the one in the nimble file
+const JNuser* = "kernel"
+const ProtocolVers* = 5.3
 
 const validx = ['A', 'B', 'C', 'D', 'E', 'F', 
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 const validy = ['8', '9', '0', 'B']
 
-proc genUUID*(nb, upper: bool = true): string =
+proc genUUID*(nb:bool=false, upper: bool = false): string =
   ## Generate a uuid version 4.
   ## If ``nb`` is false, the uuid is compatible with IPython console.
   result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
@@ -58,3 +63,5 @@ proc filter*[T](seq1: openarray[T],
   for i in 0..<seq1.len:
     if pred(seq1[i]):
       result.add(seq1[i])
+
+let JNsession* = genUUID()
