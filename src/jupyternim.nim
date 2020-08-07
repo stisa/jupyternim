@@ -3,6 +3,9 @@ import os, json, std/exitprocs
 from osproc import execProcess
 from strutils import contains, strip, splitLines
 
+import dynlib
+from zmq import zmqdll
+
 type Kernel = object
   ## The kernel object. Contains the sockets.
   hb: Heartbeat # The heartbeat socket object
@@ -33,9 +36,17 @@ proc installKernelSpec() =
   echo execProcess(r"jupyter-kernelspec install " & pkgDir / "jupyternimspec" &
       " --user").strip(leading=false) # install the spec
   echo "[Jupyternim] Nim kernel registered, you can now try it in `jupyter lab`"
+  
+  var zmql = loadLib(zmqdll)
+  echo "[Jupyternim] Found zmq library: ", not zmql.isNil()
+  if zmql.isNil():
+    echo "[Jupyternim] WARNING: No zmq library could be found, please install it"
+  else: zmql.unloadLib()
+
   when defined useHcr:
     echo "[Jupyternim] Note: this jupyternim has hotcodereloading:on, it is **very** unstable"
     echo "[Jupyternim] Please report any issues to https://github.com/stisa/jupyternim"
+  
   quit(0)
 
 proc initKernel(connfile: string): Kernel =
