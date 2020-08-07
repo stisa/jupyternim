@@ -137,7 +137,7 @@ proc encode*(reply_type: WireType, content: JsonNode,
   var
     metadata: JSonNode = %* {}
     parentHeader: WireHeader
-    encodedParent: string = "{}"
+    encodedParent: string = "{}" # star as empty json obj
   if parent.len != 0:
     identities = parent[0].ident
     # TODO: check parent header wasn't empty

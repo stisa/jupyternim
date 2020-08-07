@@ -195,9 +195,9 @@ proc handleKernelInfo(s: Shell, m: WireMessage) =
   var content: JsonNode
   #echo "sending: Kernelinfo sending busy"
   content = %* {
-    "protocol_version": "5.3",
-    "implementation": "nim",
-    "implementation_version": "0.4",
+    "protocol_version": $ProtocolVers,
+    "implementation": "jupyternim",
+    "implementation_version": JNKernelVersion,
     "language_info": {
       "name": "nim",
       "version": NimVersion,
@@ -341,12 +341,13 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
       "text": compilationResult.output
     }
     shell.pub.sendMsg(stream, content, msg)
-
+    # C:\Users\stisa\.jupyternim\codecells.nim(6, 1) Error: invalid indentation
+    # Compile error: Error
     content = %* {
       "status": status,
       "ename": "Compile error", # Exception name, as a string
-      "evalue": "Error", # Exception value, as a string
-      "traceback": nil, # traceback frames as strings, TODO:
+      "evalue": "Error", # Exception value, as a string TODO: get this from the comp.out
+      "traceback": [], # traceback frames as strings
     }
     shell.pub.sendMsg(WireType.error, content, msg)
     # Tell the frontend execution failed from shell
@@ -361,6 +362,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   status = "ok"
   streamName = "stdout"
   if not compilationResult.output.strip().len == 0:
+    # avoid sending back empty strings, avoids wasting space
     content = showHtml(styledOutput(compilationResult.output))#
     # Send compiler messages
     shell.pub.sendMsg(WireType.display_data, content, msg)
@@ -394,6 +396,7 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   # TODO: don't assume no errors are possible at runtime, 
   #       check for errors there too
 
+  # Handle display_data
   if exec_out.contains("#<jndd>"): 
     # FIXME: document this!
     debug "Handling display data"
@@ -422,8 +425,8 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   content = %* {
     "status": status,
     "execution_count": shell.count,
-    "payload": {},
-    "user_expressions": {},
+    #"payload": {}, # payloads are deprecated
+    "user_expressions": %*{}, # CHECK: %*{} vs {}
   }
   shell.sendMsg(execute_reply, content, msg)
 
@@ -454,54 +457,54 @@ proc handleIntrospection(shell: Shell, msg: WireMessage) =
   var content = %* {
     "status": "ok", #or "error"
     "found": false, # found should be true if an object was found, false otherwise
-    "data": {},     #TODO nimsuggest??
-    "metadata": {},
+    "data": %*{},     #TODO nimsuggest??
+    "metadata": %*{},
   }
   shell.sendMsg(inspect_reply, content, msg)
 
 proc handleCompletion(shell: Shell, msg: WireMessage) =
 
   let code: string = msg.content["code"].str
-  let cpos: int = msg.content["cursor_pos"].num.int
+  let cpos: int = msg.content["cursor_pos"].num.int - 1
+  var 
+    wordpart = code
+    sw = cpos
 
-  let ws = "\n\r\t "
-  let lf = "\n\r"
-  var sw = cpos
-  while sw > 0 and (not ws.contains(code[sw - 1])):
-    sw -= 1
-  var sl = sw
-  while sl > 0 and (not lf.contains(code[sl - 1])):
-    sl -= 1
-  let wrd = code[sw..cpos]
+  if code.len>1:
+    debug msg.content
+    # backtrack to word start (ie whitespace? CHECK: is it true?)
+    while sw > 0 and not (code[sw] in Whitespace): 
+      sw -= 1
+    wordpart = code[sw..cpos] # partial word
 
   var matches: seq[string] = @[] # list of all matches
 
   # Snippets
-  if "proc".startswith(wrd):
-    matches &= ("proc name(arg: type): returnType = \n    #proc")
-  elif "if".startswith(wrd):
-    matches &= ("if (expression):\n    #then")
-  elif "method".startswith(wrd):
-    matches &= ("method name(arg: type): returnType = \n    #method")
-  elif "iterator".startswith(wrd):
-    matches &= ("iterator name(arg: type): returnType = \n    #iterator")
-  elif "array".startswith(wrd):
+  if "proc".startswith(wordpart):
+    matches &= ("proc name(arg: type): returnType = \n  #proc")
+  elif "if".startswith(wordpart):
+    matches &= ("if (expression):\n  #then")
+  elif "method".startswith(wordpart):
+    matches &= ("method name(arg: type): returnType = \n  #method")
+  elif "iterator".startswith(wordpart):
+    matches &= ("iterator name(arg: type): returnType = \n  #iterator")
+  elif "array".startswith(wordpart):
     matches &= ("array[length, type]")
-  elif "seq".startswith(wrd):
+  elif "seq".startswith(wordpart):
     matches &= ("seq[type]")
-  elif "for".startswith(wrd):
+  elif "for".startswith(wordpart):
     matches &= ("for index in iterable):\n  #for loop")
-  elif "while".startswith(wrd):
+  elif "while".startswith(wordpart):
     matches &= ("while(condition):\n  #while loop")
-  elif "block".startswith(wrd):
+  elif "block".startswith(wordpart):
     matches &= ("block name:\n  #block")
-  elif "case".startswith(wrd):
+  elif "case".startswith(wordpart):
     matches &= ("case variable:\nof value:\n  #then\nelse:\n  #else")
-  elif "try".startswith(wrd):
+  elif "try".startswith(wordpart):
     matches &= ("try:\n  #something\nexcept exception:\n  #handle exception")
-  elif "template".startswith(wrd):
+  elif "template".startswith(wordpart):
     matches &= ("template name (arg: type): returnType =\n  #template")
-  elif "macro".startswith(wrd):
+  elif "macro".startswith(wordpart):
     matches &= ("macro name (arg: type): returnType =\n  #macro")
 
   # Single word matches
@@ -520,7 +523,8 @@ proc handleCompletion(shell: Shell, msg: WireMessage) =
   #magics = ['#>loadblock ','#>passflag ']
 
   # Add all matches to our list
-  matches = matches & (filter(single) do (x: string) -> bool: x.startsWith(wrd))
+  #TODO: rewrite this and document
+  matches = matches & (filter(single) do (x: string) -> bool: x.startsWith(wordpart))
 
   # TODO completion+nimsuggest
 
@@ -530,10 +534,10 @@ proc handleCompletion(shell: Shell, msg: WireMessage) =
     # The range of text that should be replaced by the above matches when a completion is accepted.
     # typically cursor_end is the same as cursor_pos in the request.
     "cursor_start": sw,
-    "cursor_end": cpos,
+    "cursor_end": cpos+1, # re add 1 to match cursor_pos
 
     # Information that frontend plugins might use for extra display information about completions.
-    "metadata": {},
+    "metadata": %* {},
 
     # status should be 'ok' unless an exception was raised during the request,
     # in which case it should be 'error', along with the usual error message content
@@ -561,10 +565,10 @@ proc handleCommInfo(s: Shell, msg: WireMessage) =
     debug "CommInfo about ", msg.content["target_name"].getStr
     # A dictionary of the comms, indexed by uuids (comm_id).
     #[content = {  'comms': { comm_id: { 'target_name': str,  },    }, }]#
-    var content = %* { "comms":  {} } # TODO: don't care
+    var content = %* { "comms": %* {} } # TODO: don't care
     s.sendMsg(WireType.comm_info_reply, content, msg)
   else:
-    var content = %* { "comms":  {} } # TODO: don't care
+    var content = %* { "comms": %* {} } # TODO: don't care
     s.sendMsg(WireType.comm_info_reply, content, msg)
 
 proc handle(s: var Shell, m: WireMessage) =
