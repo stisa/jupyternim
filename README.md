@@ -1,8 +1,9 @@
 Jupyter Nim
 ====
 
-This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim. 
-Works with `notebook` and `lab`, should also work in VSCode.
+This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim.  
+Works with `notebook`, `lab`, `nteract`, should even work in VSCode.  
+If you use `nteract`, there's still some problems, please report them.  
 If you use `jupyter lab`, you can also install the companion extension for it by
 ```bash
 jupyter labextension install jupyternim-labextension
