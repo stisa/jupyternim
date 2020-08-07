@@ -1,5 +1,12 @@
 name: Build
-on: [push]
+on: 
+  push:
+    paths:
+      - 'src/**'
+      - 'examples/**'
+  push:
+    paths:
+      - '**.nimble'
 jobs:
   build_vdevel:
     name: v_devel
