@@ -3,16 +3,15 @@ Jupyter Nim
 
 This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim. 
 Works with `notebook` and `lab`, should also work in VSCode.
+If you use `jupyter lab`, you can also install the companion extension for it by
+```bash
+jupyter labextension install jupyternim-labextension
+```
+to provide syntax highlighting.
   
 Look at [example-notebook](examples/example-notebook.ipynb) for some examples.  
 
 NOTE: running a notebook with this creates a directory `~/.jupyternim` in which it stores blocks of code, pngs, compiled outputs, etc.
-
-Prereqs
--------
-- a working `nim` installation ( [download](http://nim-lang.org/download.html) )
-- a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
-- a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.2. **It must be in PATH or the kernel won't run**.
 
 Installation 
 ------------
@@ -22,6 +21,11 @@ nimble install https://github.com/stisa/jupyternim -y
 ```
 Done!
 
+### Prereqs
+
+- a working `nim` installation ( [download](http://nim-lang.org/download.html) )
+- a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
+- a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.2. **It must be in PATH or the kernel won't run**.
 ### Long version:
 
 The kernel should be automatically compiled and register by doing `nimble install jupyternim` ( or `nimble install https://github.com/stisa/jupyternim` if it's not in nimble yet).
@@ -79,7 +83,7 @@ To send back data to display, you can use the module [jupyternimpkg/display](src
 ```nim
 import nimPNG, jupyternimpkg/display
 
-#needs absolute path for now. 
+#needs absolute path (for now, PRs welcome)
 let file = r"C:\\Users\stisa\\.nimble\\pkgs\\jupyternim-0.5.1\\jupyternimspec\\logo-64x64.png"
 show dkPngFile, [64, 64]: # [width, height]
     file
@@ -112,17 +116,17 @@ echo "#<jndd>#" & $content $ "#<outjndd>#"
 ```
 Consider sending a pr for the display module if you end up having to do this.
 
-TODO:
+TODO
 ----
-- Finish implementing messaging ( completion, introspection, history, display... )
-- Connect to nimsuggest via socket, parse its output for introspection requests
-- Documentation lookup magic? 
+- [ ] Finish implementing messaging ( completion, introspection, history, update_display_data... )
+- [ ] Connect to nimsuggest via socket, parse its output for introspection requests
+- [ ] Documentation lookup magic? 
   - eg. put docs in a subfolder, then `#>doc sequtils` opens a browser to the correct `.html` page ( possibly local )  
-- improve hotcodereloading (probably needs work on the compiler side)
-- convince jupyter notebook maintainers to provide cellId, so I can stop patching the javascript
-- find a better way to fake a repl than re running prior code and discarding output
-- this readme should be a notebook?
-- use `JNsession` as name for temp files
+- [ ] improve hotcodereloading (probably needs work on the compiler side)
+- [ ] convince jupyter notebook maintainers to provide cellId, so I can stop patching the javascript
+- [ ] find a better way to fake a repl than re running prior code and discarding output (we have HCR! Buggy though)
+- [ ] use `JNsession` as name for temp files (allows multiple open kernels)
+- [ ] a better way to handle `display_data` than string delimiters
 
 General structure
 -----------------
@@ -146,7 +150,8 @@ a cellId.
 Internal Notes
 --------------
 Messages must be multipart  
-signature must be lowercase  
+signature-must-be-lowercase  
+
 http://nim-lang.org/docs/tinyc.html  
 
 [Jupyter Kernel Docs](https://jupyter-client.readthedocs.io/en/latest/kernels.html#kernels)  
