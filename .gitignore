@@ -1,4 +1,3 @@
-.vscode/
 private/nimcache/
 nimcache/
 refzmq.nim

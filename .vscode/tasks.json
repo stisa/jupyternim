@@ -1,0 +1,33 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install release non-hcr",
+      "type": "shell",
+      "command": "nimble install -y"
+    },
+    // these depends on having an install in nimble
+    {
+      "label": "Build debug non-hcr",
+      "type": "shell",
+      "command": "nimble dev",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Build debug hcr",
+      "type": "shell",
+      "command": "nimble hcr"
+    },
+    {
+      "label": "Build release hcr",
+      "type": "shell",
+      "command": "nimble rhcr"
+    }
+  ]
+}
