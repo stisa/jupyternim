@@ -447,6 +447,7 @@ proc handleIntrospection(shell: Shell, msg: WireMessage) =
     'metadata' : dict,
     }
   ]#
+  debug "TODO: Inspect request:\n",msg.content
   let code = msg.content["code"].str
   let cpos = msg.content["cursor_pos"].num.int
   if code[cpos] == '.':
@@ -561,6 +562,7 @@ proc handleHistory(shell: Shell, msg: WireMessage) =
 
 proc handleCommInfo(s: Shell, msg: WireMessage) =
   debug "Unhandled: CommInfoReq"
+  debug msg.content
   if msg.content.hasKey("target_name"):
     debug "CommInfo about ", msg.content["target_name"].getStr
     # A dictionary of the comms, indexed by uuids (comm_id).

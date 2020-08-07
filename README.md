@@ -49,6 +49,16 @@ Note that [ZeroMQ](http://zeromq.org/intro:get-the-software) is dinamically link
 To enable the **very** experimental hotcodereloading support, you'll need to recompile `jupyternim` with `-d:useHcr` and then overwrite the one in `~/.nimble/pkgs/jupyternim-<version>` with it.  
 The hotcodereloading mostly works, but there are various bugs that prevent its use. For examples, printing a float crashes it.
 
+Editing
+-------
+
+`TAB` : completion request, for example `p<TAB` -> a pop up with possible completions  
+![completion](examples/jlabcompletion.gif)
+
+TODO:
+- [ ] `shift+TAB` : inspection request, for example `echo<shift+TAB>` -> a pop with a description of echo 
+- [ ] support the debugger protocol, support variable value inspection
+
 Magics:
 -------
 
