@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '**.nimble'
 jobs:
   tag:
     if: github.actor == github.repository_owner
