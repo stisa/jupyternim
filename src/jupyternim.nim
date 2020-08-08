@@ -16,10 +16,6 @@ type Kernel = object
   sin: StdIn
   running: bool
 
-
-# don't require jupyter for installation! Figure out the path in which it searches for kernelspec and
-# just write the files there directly instead of registering with jupyter-kernelspec install
-# https://github.com/JuliaLang/IJulia.jl/pull/791
 debug "Running at ", getCurrentDir()
 
 proc installKernelSpec() =
@@ -40,8 +36,18 @@ proc installKernelSpec() =
     "file_extension": ".nim"}
 
   writeFile(pkgDir / "jupyternimspec"/"kernel.json", $kernelspec)
-  echo execProcess(r"jupyter-kernelspec install " & pkgDir / "jupyternimspec" &
-      " --user").strip(leading=false) # install the spec
+
+  # Copying the kernelspec to expected location
+  #  ~/.local/share/jupyter/kernels (Linux)
+  #  ~/Library/Jupyter/kernels (Mac)
+  #  getEnv("APPDATA") & "jupyter" / "kernels" (Windows)
+  # should be equivalent to `jupyter-kernelspec install pkgDir/jupyternimspec --user`
+  let kernelspecdir = when defined windows:  getEnv("APPDATA") / "jupyter" / "kernels" / "jupyternimspec"
+                      elif defined(macosx) or defined(macos): r"~/Library/Jupyter/kernels" / "jupyternimspec" 
+                      elif defined linux: "~/.local/share/jupyter/kernels" / "jupyternimspec"
+  echo "[Jupyternim] Copying Jupyternim kernelspec to ", kernelspecdir
+  copyDir(pkgDir / "jupyternimspec", kernelspecdir)
+  
   echo "[Jupyternim] Nim kernel registered, you can now try it in `jupyter lab`"
   
   var zmql = loadLib(zmqdll)
@@ -51,7 +57,7 @@ proc installKernelSpec() =
   else: zmql.unloadLib()
 
   when defined useHcr:
-    echo "[Jupyternim] Note: this jupyternim has hotcodereloading:on, it is **very** unstable"
+    echo "[Jupyternim] Note: jupyternim has hotcodereloading:on, it is **very** unstable"
     echo "[Jupyternim] Please report any issues to https://github.com/stisa/jupyternim"
   
   quit(0)
