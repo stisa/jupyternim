@@ -1,2 +1,2 @@
 proc localimport*():string = 
-    result = "this way works!"
+    result = "Hello from a local import!"

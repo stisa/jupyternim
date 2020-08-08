@@ -15,6 +15,13 @@ type Kernel = object
   sin: StdIn
   running: bool
 
+
+# don't require jupyter for installation! Figure out the path in which it searches for kernelspec and
+# just write the files there directly instead of registering with jupyter-kernelspec install
+# https://github.com/JuliaLang/IJulia.jl/pull/791
+echo "Running at ", getCurrentDir() # TODO: use this to make imports etc work, and also setpwd in built exes.
+# Put it in utils.nim (and rename that to common.nim, and move some more constants there)
+
 proc installKernelSpec() =
   ## Install the kernel, executed when running jupyternim directly
   # no connection file passed: assume we're registering the kernel with jupyter
@@ -23,7 +30,7 @@ proc installKernelSpec() =
   var pkgDir = execProcess("nimble path jupyternim").strip()
   var (h, t) = pkgDir.splitPath()
 
-  var pathToJN = (if t == "src": h else: pkgDir) / "jupyternim"
+  var pathToJN = (if t == "src": h else: pkgDir) / "jupyternim" # move jupyternim to a const string in common.nim
   pathToJN = pathToJN.changeFileExt(ExeExt)
 
   let kernelspec = %*{

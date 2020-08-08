@@ -1,4 +1,4 @@
-import strutils, times, random, hmac, nimSHA2, md5, zmq
+import strutils, times, random, nimSHA2, md5, zmq
 
 template debug*(str: varargs[string, `$`]) =
   when not defined(release):
@@ -7,10 +7,6 @@ template debug*(str: varargs[string, `$`]) =
     stderr.flushFile
   else:
     discard
-
-const JNKernelVersion* = "0.5.1" # should match the one in the nimble file
-const JNuser* = "kernel"
-const ProtocolVers* = 5.3
 
 const validx = ['A', 'B', 'C', 'D', 'E', 'F', 
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -24,10 +20,6 @@ proc genUUID*(nb:bool=false, upper: bool = false): string =
     if c == 'y': c = sample(validy)
     elif c == 'x': c = sample(validx)
   if not upper: result = result.toLowerAscii
-
-proc sign*(msg: string, key: string): string =
-  ##Sign a message with a secure signature.
-  result = hmac.hmac_sha256(key, msg).hex.toLowerAscii
 
 proc getISOstr*(): string = getDateStr()&'T'&getClockStr()
 
@@ -64,4 +56,8 @@ proc filter*[T](seq1: openarray[T],
     if pred(seq1[i]):
       result.add(seq1[i])
 
-let JNsession* = genUUID()
+# Useful constants
+const JNKernelVersion* = "0.5.3" # should match the one in the nimble file
+const JNuser* = "kernel"
+const JNprotocolVers* = 5.3
+let JNsession* = genUUID() # not a const, we want it to change with every run
