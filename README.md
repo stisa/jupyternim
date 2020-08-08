@@ -2,8 +2,8 @@ Jupyter Nim
 ====
 
 This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim.  
-Works with `notebook`, `lab`, `nteract`, should even work in VSCode.  
-If you use `nteract`, there's still some problems, please report them.  
+Works with `notebook`, `lab`, `nteract`, should even work in `vscode-python`.  
+If you use `nteract` or `vscode-python`, there are still some problems, please report them.  
 If you use `jupyter lab`, you can also install the companion extension for it by
 ```bash
 jupyter labextension install jupyternim-labextension
@@ -25,22 +25,23 @@ Done!
 ### Prereqs
 
 - a working `nim` installation ( [download](http://nim-lang.org/download.html) )
-- a working `jupyter` installation ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
 - a `zeromq` installation. Currently tested only with [ZeroMQ](http://zeromq.org/intro:get-the-software) 4.2. **It must be in PATH or the kernel won't run**.
+  - you may already have this installed, it will be checked when you install `jupyternim` to see if you need to install it yourself
+- some kind of jupyter environment, some examples:
+  - `jupyter`  ( I recomend [miniconda3](http://conda.pydata.org/miniconda.html) and adding jupyter with `conda install jupyter` )
+  - `nteract` (get it [here](https://nteract.io/))
+  - `vscode`+`vscode-python` extension ( poor naming, but `vscode-python` also provides `jupyter` support )
+
 ### Long version:
 
-The kernel should be automatically compiled and register by doing `nimble install jupyternim` ( or `nimble install https://github.com/stisa/jupyternim` if it's not in nimble yet).
-  
-Now you need to run `jupyternim` to register the kernel with jupyter (you can run `jupyternim` directly if you have `.nimble/bin` in your path, or run it from
-`<nimblepath>/pkgs/jupyternim-####`). 
-
+The kernel should be automatically compiled and registered by doing `nimble install jupyternim` ( or `nimble install https://github.com/stisa/jupyternim` if it's not in nimble yet).
 
 Alternatively, try the following:
 
 - clone this repo: `git clone https://github.com/stisa/jupyternim`
 - then go into the cloned dir `cd jupyternim`
 - register to nimble with `nimble install`
-- compile with `nimble build`
+- compile with `nimble dev`, this will give you a debug version
 - run `jupyternim`to register the kernel
 - run `jupyter notebook`
 
