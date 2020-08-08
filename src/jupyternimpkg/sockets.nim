@@ -229,16 +229,13 @@ proc styledOutput(s:string):string =
       
 
 proc analyzeError(s:string): tuple[evalue:string, trace: seq[string]] =
-  result.trace = s.splitLines
-  var last = result.trace[^1]
-  # pop again if empty
-  if last.isEmptyOrWhitespace: 
-    discard pop result.trace
-    last = result.trace[^1]
-  #debug last
-  #debug last.rsplit(") Error: ")
-  result.evalue = last.rsplit(") Error: ")[1]
-  result.trace[^1] = "Error: " & result.evalue # hide path, useless here no?
+  for line in s.splitLines:
+    # don't care if empty
+    if line.isEmptyOrWhitespace: continue
+    if line.contains(") Error: "):
+      result.evalue = line.rsplit(") Error: ")[1]
+    result.trace.add(line)
+  result.trace.add("Error: " & result.evalue) # hide path, useless here no?
 
 proc handleExecute(shell: var Shell, msg: WireMessage) =
   ## Handle the ``execute_request`` message
