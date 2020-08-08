@@ -1,4 +1,4 @@
-import strutils, times, random, nimSHA2, md5, zmq
+import strutils, times, random, nimSHA2, md5, zmq, os
 
 template debug*(str: varargs[string, `$`]) =
   when not defined(release):
@@ -15,6 +15,7 @@ const validy = ['8', '9', '0', 'B']
 proc genUUID*(nb:bool=false, upper: bool = false): string =
   ## Generate a uuid version 4.
   ## If ``nb`` is false, the uuid is compatible with IPython console.
+  randomize()
   result = if nb: "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx" else: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
   for c in result.mitems:
     if c == 'y': c = sample(validy)
@@ -57,7 +58,17 @@ proc filter*[T](seq1: openarray[T],
       result.add(seq1[i])
 
 # Useful constants
-const JNKernelVersion* = "0.5.3" # should match the one in the nimble file
-const JNuser* = "kernel"
-const JNprotocolVers* = 5.3
-let JNsession* = genUUID() # not a const, we want it to change with every run
+const 
+  JNKernelVersion* = "0.5.3" # should match the one in the nimble file
+  JNuser* = "kernel"
+  JNprotocolVers* = 5.3
+var 
+  JNsession*: string # = genUUID() # not a const, we want it to change with every run
+  JNfile* : string # = "n" & JNsession.replace('-','n') # not a const, we want it to change with every run
+  JNoutCodeServerName* : string
+debug "FROM UTILS", JNsession# FINISH the 1 tempfile per kernel thingy
+
+proc setupFileNames* () =
+  JNsession = genUUID()
+  JNfile = "n" & JNsession.replace('-','n')
+  JNoutCodeservername = JNfile.changeFileExt(ExeExt)

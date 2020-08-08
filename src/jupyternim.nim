@@ -1,10 +1,11 @@
 import ./jupyternimpkg/[sockets, messages, utils]
 import os, json, std/exitprocs
 from osproc import execProcess
-from strutils import contains, strip, splitLines
+from strutils import contains, strip
 
-import dynlib
-from zmq import zmqdll
+import dynlib # to check for zmq
+
+from zmq import zmqdll # to check against the name nim-zmq uses
 
 type Kernel = object
   ## The kernel object. Contains the sockets.
@@ -19,8 +20,7 @@ type Kernel = object
 # don't require jupyter for installation! Figure out the path in which it searches for kernelspec and
 # just write the files there directly instead of registering with jupyter-kernelspec install
 # https://github.com/JuliaLang/IJulia.jl/pull/791
-echo "Running at ", getCurrentDir() # TODO: use this to make imports etc work, and also setpwd in built exes.
-# Put it in utils.nim (and rename that to common.nim, and move some more constants there)
+debug "Running at ", getCurrentDir()
 
 proc installKernelSpec() =
   ## Install the kernel, executed when running jupyternim directly
@@ -81,7 +81,7 @@ proc initKernel(connfile: string): Kernel =
 
 proc loop(kernel: var Kernel) =
     #spawn kernel.hb.beat()
-    debug "Entering main loop"
+    debug "Entering main loop, filename: ", JNfile
     while kernel.running:
       # this is gonna crash due to timeouts... or make the pc explode with messages
       
@@ -115,9 +115,16 @@ proc shutdown(k: var Kernel) {.noconv.} =
   k.pub.close()
   k.shell.close()
   k.control.close()
+  k.sin.close()
   if dirExists(jnTempDir):
-    removeDir(jnTempDir) # Remove temp dir on exit
-    debug "Removed /.jupyternim"
+    # only remove our files on exit
+    for f in walkDir(jnTempDir):
+      if f.kind == pcFile and f.path.contains(JNfile): # our files should match this
+        try:
+          removeFile(f.path) # Remove temp dir on exit
+        except:
+          echo "[Jupyternim] failed to delete ", f.path
+    debug "Cleaned up files from /.jupyternim"
 
 proc runKernel(connfile:string) =
   ## Main loop: this is executed when jupyter starts the kernel

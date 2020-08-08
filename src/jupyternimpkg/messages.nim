@@ -78,6 +78,8 @@ var ConnKey: string # Key used to sign messages
 proc parseConnMsg*(connfile: string): ConnectionFile =
   result = parseFile(connfile).to(ConnectionFile)
   ConnKey = result.key
+  setupFileNames() # update the filenames on kernel start 
+  debug "FROM MESSAGES: ", JNfile, " out ", JNoutCodeservername
   debug result
 
 proc initHeader(msg_id, date: string, msg_type:WireType): WireHeader =
