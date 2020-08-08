@@ -94,8 +94,7 @@ To send back data to display, you can use the module [jupyternimpkg/display](src
 ```nim
 import nimPNG, jupyternimpkg/display
 
-#needs absolute path (for now, PRs welcome)
-let file = r"C:\\Users\stisa\\.nimble\\pkgs\\jupyternim-0.5.1\\jupyternimspec\\logo-64x64.png"
+let file = r"..\\src\\jupyternimspec\\logo-64x64.png"
 show dkPngFile, [64, 64]: # [width, height]
     file
 ```
