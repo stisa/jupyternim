@@ -10,7 +10,8 @@ jupyter labextension install jupyternim-labextension
 ```
 to provide syntax highlighting.
   
-Look at [example-notebook](examples/example-notebook.ipynb) for some examples.  
+Look at [example-notebook](examples/example-notebook.ipynb) for some examples,  
+and at [example-display](examples/example-display.ipynb) for examples of displaying latex, md, etc.  
 
 NOTE: running a notebook with this creates a directory `~/.jupyternim` in which it stores blocks of code, pngs, compiled outputs, etc.
 

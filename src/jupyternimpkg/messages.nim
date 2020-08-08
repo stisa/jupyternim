@@ -233,6 +233,15 @@ proc execResultMsg*( count: int, data: string, # or JsonNode?
       "metadata": %*{}
   }
 
+proc displayExecResMsg*(count: int, ddcontent: JsonNode, 
+                    parent: Option[WireMessage]=none(WireMessage)): PubMsg =
+  # we expect to mostly see this from the display module, so content is 
+  # already complete, but in string form
+  result.setupMsg(execute_result, parent)
+  result.content = ddcontent
+  result.content["execution_count"] = % count
+  result.content["metadata"] = %* {}
+
 proc execReplyMsg*(count: int, status: Status, # or JsonNode? 
                   parent: WireMessage): ShellMsg =
   result.setupMsg(execute_reply, parent.some)

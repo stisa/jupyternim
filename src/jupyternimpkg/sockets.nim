@@ -361,24 +361,29 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   #       check for errors there too
 
   # Handle display_data
-  if exec_out.contains("#<jndd>"): 
-    # FIXME: document this!
-    debug "Handling display data"
-    # there's at least a plot TODO: multiple plots (rfind is dangerous in that case)
-    # plotdata is base64 encoded! and delimited by jpns and 0000x0000 that is WxH
-    # TODO: we probably want to remove this part from the output?
-    # also needs a filetype parameter
-    # Maybe just put code to open a socket and send a display_data message in a utils lib
-    # and let the user/plotlib deal with this? Much cleaner?
+  # FIXME: document this!
+  # debug "Handling display data"
+  # exec_out only has output from the last cell, so it should be safe to
+  # add all the jndd blocks here.  
+  # Maybe just put code to open a socket and send a display_data message in a utils lib
+  # and let the user/plotlib deal with this? Much cleaner?
+  # https://nim-lang.org/docs/net.html
+  while exec_out.contains("#<jndd>"):
     let
-      ddstart = exec_out.rfind("#<jndd>#")
-      ddend = exec_out.rfind("#<outjndd>#")
-    let dddata = exec_out[ddstart+len("#<jndd>#")..<ddend]
-    let parseddata = parseJson(dddata)
-    shell.pub.sendMsg(displayDataMsg(parseddata, some msg))
-    exec_out = exec_out.replace(dddata, "") # clear out the base64 img from the output
-  
-  shell.pub.sendMsg(execResultMsg(shell.count, exec_out, some msg))
+      ddstart = exec_out.find("#<jndd>#")
+      ddend = exec_out.find("#<outjndd>#")
+      dddata = exec_out[ddstart+len("#<jndd>#")..<ddend]
+      parseddata = parseJson(dddata)
+    
+    #shell.pub.sendMsg(displayDataMsg(parseddata, some msg))
+    shell.pub.sendMsg(displayExecResMsg(shell.count, parseddata, some msg))
+    
+    #debug "b",exec_out
+    exec_out = exec_out.replace("#<jndd>#" & dddata & "#<outjndd>#", "") # clear out the data from the output
+    #debug "a",exec_out
+
+  shell.pub.sendMsg(displayExecResMsg(shell.count, %* {"data": %* {"text/plain": exec_out}}, some msg))
+  #shell.pub.sendMsg(execResultMsg(shell.count, exec_out, some msg))
 
   # Tell the frontend execution was ok, or not from shell
   shell.sendMsg( execReplyMsg(shell.count, status, msg))
