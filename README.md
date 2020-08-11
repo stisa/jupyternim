@@ -4,7 +4,7 @@ Jupyter Nim
 This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim.  
 Works with `notebook`, `lab`, `nteract`, should even work in `vscode-python`.  
 If you use `nteract` or `vscode-python`, there are still some problems, please report them.  
-If you use `jupyter lab`, you can also install the companion extension for it by
+For `jupyter lab`, you can also install the companion extension by
 ```bash
 jupyter labextension install jupyternim-labextension
 ```
@@ -22,6 +22,8 @@ TL,DR:
 nimble install https://github.com/stisa/jupyternim -y
 ```
 Done!
+
+`jupyternim -v` has some details about how it was compiled.
 
 ### Prereqs
 
