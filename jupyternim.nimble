@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.5.7"
+version       = "0.5.8"
 author        = "stisa"
 description   = "A Jupyter Kernel for Nim"
 license       = "MIT"
