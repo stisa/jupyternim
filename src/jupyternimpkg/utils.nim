@@ -66,7 +66,6 @@ var
   JNsession*: string # = genUUID() # not a const, we want it to change with every run
   JNfile* : string # = "n" & JNsession.replace('-','n') # not a const, we want it to change with every run
   JNoutCodeServerName* : string
-debug "FROM UTILS", JNsession# FINISH the 1 tempfile per kernel thingy
 
 proc setupFileNames* () =
   JNsession = genUUID()

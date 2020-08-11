@@ -16,7 +16,7 @@ type Kernel = object
   sin: StdIn
   running: bool
 
-debug "Running at ", getCurrentDir()
+#debug "Running at ", getCurrentDir()
 
 proc installKernelSpec() =
   ## Install the kernel, executed when running jupyternim directly
@@ -148,7 +148,8 @@ of 0: # no args, assume we are installing the kernel
   installKernelSpec()
 of 1:
   if arguments[0] == "-v":
-    echo "Jupyternim version: ", JNKernelVersion
+    echo "Jupyternim ", if defined debug: "debug " else:"", "version: ", JNKernelVersion
+    echo "  hcr enabled: ", defined(useHcr)
   elif arguments[0][^4..^1] == "json": # TODO: file splitFile bug with C:\Users\stisa\AppData\Roaming\jupyter\runtime\kernel-9f74a25e-d932-4212-98ae-693f8d18ed55.json
     runKernel(arguments[0])
   else:

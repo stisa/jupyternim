@@ -175,7 +175,7 @@ proc createShell*(ip: string, shellport: BiggestInt, pub: IOPub): Shell =
   result.code["initialCell"] = initialCodecell
   when defined useHcr:
     let tmp = result.updateCodeServer(firstInit=true)
-    debug tmp.output
+    #debug tmp.output
     result.codeserver = result.startCodeServer()
 
 proc handleKernelInfo(s: Shell, m: WireMessage) =
