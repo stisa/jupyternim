@@ -54,3 +54,7 @@ task rhcr, "Build and register a release version with -d:useHcr":
     exec(jnpath.output / bin[0].changeFileExt(ExeExt))
   else:
     echo "Can't find an installed jupyternim"
+
+task docs, "Build docs":
+  exec(r"nim doc -O:.\docs\display.html .\src\jupyternimpkg\display.nim")
+  exec(r"nim doc -O:.\docs\index.html .\src\jupyternim.nim")

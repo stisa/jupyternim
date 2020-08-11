@@ -118,7 +118,7 @@ proc showText(what: string, mime = "text/plain") =
 
 template latex*(str: varargs[string, `$`]) =
   ## Send back a string as latex expression to display.
-  ## Wraps the string in `$$`. Remember to escape `\`.
+  ## Wraps the string in `$$`. Remember to escape `\\`.
   ## Mimics `echo` so eg. `latex "x =", x` works. 
   showText("$$" & str.join(" ") & "$$", "text/latex")
   

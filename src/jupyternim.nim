@@ -7,6 +7,19 @@ import dynlib # to check for zmq
 
 from zmq import zmqdll # to check against the name nim-zmq uses
 
+## A Jupyter Kernel for Nim.  
+## 
+## Can be built with -d:useHcr for **very** experimental hot code reloading support.  
+##  
+## Install with:
+## 
+## .. code-block::
+##   nimble install jupyternim -y
+## 
+## Run ``jupyternim -v`` to display version and some info about compilation flags, eg. hcr and debug.
+## 
+## See also the [display](./display.html) package.
+
 type Kernel = object
   ## The kernel object. Contains the sockets.
   hb: Heartbeat # The heartbeat socket object
@@ -133,7 +146,7 @@ proc shutdown(k: var Kernel) {.noconv.} =
     debug "Cleaned up files from /.jupyternim"
 
 proc runKernel(connfile:string) =
-  ## Main loop: this is executed when jupyter starts the kernel
+  # Main loop: this is executed when jupyter starts the kernel
   
   var kernel: Kernel = initKernel(connfile)
 

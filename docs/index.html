@@ -14,7 +14,7 @@
 <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400,500,600' rel='stylesheet' type='text/css'/>
 
 <!-- CSS -->
-<title>display</title>
+<title>jupyternim</title>
 <style type="text/css" >
 /*
 Stylesheet for use with Docutils/rst2html.
@@ -1208,51 +1208,14 @@ function main() {
 <body onload="main()">
 <div class="document" id="documentId">
   <div class="container">
-    <h1 class="title">display</h1>
+    <h1 class="title">jupyternim</h1>
     <div class="row">
   <div class="three columns">
   <ul class="simple simple-toc" id="toc-list">
 <li>
-  <a class="reference reference-toplevel" href="#7" id="57">Types</a>
+  <a class="reference reference-toplevel" href="#6" id="56">Imports</a>
   <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#DisplayKind"
-    title="DisplayKind = enum
-  dkPng, dkPlot, dkFile, dkTextFile, dkImageFile, dkHtml"><wbr />Display<wbr />Kind<span class="attachedType" style="visibility:hidden"></span></a></li>
-
-  </ul>
-</li>
-<li>
-  <a class="reference reference-toplevel" href="#12" id="62">Procs</a>
-  <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#showBinaryFile,string"
-    title="showBinaryFile(what: string): JsonNode"><wbr />show<wbr />Binary<wbr />File<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#showImgFile,string,int,int"
-    title="showImgFile(what: string; w: int = 480; h: int = 320): JsonNode"><wbr />show<wbr />Img<wbr />File<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#showTextFile,string"
-    title="showTextFile(what: string): JsonNode"><wbr />show<wbr />Text<wbr />File<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#showInMemPng,PNG[string],int,int"
-    title="showInMemPng(what: PNG[string]; w: int = 480; h: int = 320): JsonNode"><wbr />show<wbr />In<wbr />Mem<wbr />Png<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#showBase64StringPng,string,int,int"
-    title="showBase64StringPng(what: string; w: int = 480; h: int = 320): JsonNode"><wbr />show<wbr />Base64String<wbr />Png<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#showHtml,string"
-    title="showHtml(what: string): JsonNode"><wbr />show<wbr />Html<span class="attachedType" style="visibility:hidden"></span></a></li>
-
-  </ul>
-</li>
-<li>
-  <a class="reference reference-toplevel" href="#18" id="68">Templates</a>
-  <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#show.t,DisplayKind,array[,int],untyped"
-    title="show(kind: DisplayKind; size: array[2, int]; what: untyped)"><wbr />show<span class="attachedType" style="visibility:hidden">DisplayKind</span></a></li>
-  <li><a class="reference" href="#show.t,DisplayKind,untyped"
-    title="show(kind: DisplayKind; what: untyped)"><wbr />show<span class="attachedType" style="visibility:hidden">DisplayKind</span></a></li>
-  <li><a class="reference" href="#latex.t,varargs[string,]"
-    title="latex(str: varargs[string, `$`])"><wbr />latex<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#md.t,varargs[string,]"
-    title="md(str: varargs[string, `$`])"><wbr />md<span class="attachedType" style="visibility:hidden"></span></a></li>
-  <li><a class="reference" href="#html.t,varargs[string,]"
-    title="html(str: varargs[string, `$`])"><wbr />html<span class="attachedType" style="visibility:hidden"></span></a></li>
-
+    
   </ul>
 </li>
 
@@ -1261,86 +1224,16 @@ function main() {
   </div>
   <div class="nine columns" id="content">
   <div id="tocRoot"></div>
-  <p class="module-desc">Provide some helpers to get formatted data back to the kernel. Most people will probably just use the templates, the procs are implementations.</p>
-  <div class="section" id="7">
-<h1><a class="toc-backref" href="#7">Types</a></h1>
+  <p class="module-desc"><p>A Jupyter Kernel for Nim.</p>
+<p>Can be built with -d:useHcr for <strong>very</strong> experimental hot code reloading support.</p>
+<p>Install with:</p>
+<pre class = "listing"><span class="Identifier">nimble</span> <span class="Identifier">install</span> <span class="Identifier">jupyternim</span> <span class="Operator">-</span><span class="Identifier">y</span></pre><p>Run <tt class="docutils literal"><span class="pre">jupyternim -v</span></tt> to display version and some info about compilation flags, eg. hcr and debug.</p>
+<p>See also the <a class="reference external" href="./display.html">display</a> package.</p>
+</p>
+  <div class="section" id="6">
+<h1><a class="toc-backref" href="#6">Imports</a></h1>
 <dl class="item">
-<dt id="DisplayKind"><a name="DisplayKind"></a><pre><a href="display.html#DisplayKind"><span class="Identifier">DisplayKind</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
-  <span class="Identifier">dkPng</span><span class="Other">,</span> <span class="Identifier">dkPlot</span><span class="Other">,</span> <span class="Identifier">dkFile</span><span class="Other">,</span> <span class="Identifier">dkTextFile</span><span class="Other">,</span> <span class="Identifier">dkImageFile</span><span class="Other">,</span> <span class="Identifier">dkHtml</span></pre></dt>
-<dd>
-Kind of data to be shown
-
-</dd>
-
-</dl></div>
-<div class="section" id="12">
-<h1><a class="toc-backref" href="#12">Procs</a></h1>
-<dl class="item">
-<dt id="showBinaryFile"><a name="showBinaryFile,string"></a><pre><span class="Keyword">proc</span> <a href="#showBinaryFile%2Cstring"><span class="Identifier">showBinaryFile</span></a><span class="Other">(</span><span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">JsonNode</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-For <tt class="docutils literal"><span class="pre">dkFile</span></tt>. Reads the file to a string and encode it as base64.
-
-</dd>
-<dt id="showImgFile"><a name="showImgFile,string,int,int"></a><pre><span class="Keyword">proc</span> <a href="#showImgFile%2Cstring%2Cint%2Cint"><span class="Identifier">showImgFile</span></a><span class="Other">(</span><span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">w</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">480</span><span class="Other">;</span> <span class="Identifier">h</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">320</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">JsonNode</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-For <tt class="docutils literal"><span class="pre">dkImageFile</span></tt>. Reads the file to a string and encode it as base64. Can set width and height of the output.
-
-</dd>
-<dt id="showTextFile"><a name="showTextFile,string"></a><pre><span class="Keyword">proc</span> <a href="#showTextFile%2Cstring"><span class="Identifier">showTextFile</span></a><span class="Other">(</span><span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">JsonNode</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ReadIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-For <tt class="docutils literal"><span class="pre">dkTextFile</span></tt>. Reads the file to a string and tries to match it with a mimetype by the extension. Since mimetype support varies by jupyter frontend, the plain text is also sent back.
-
-</dd>
-<dt id="showInMemPng"><a name="showInMemPng,PNG[string],int,int"></a><pre><span class="Keyword">proc</span> <a href="#showInMemPng%2CPNG%5Bstring%5D%2Cint%2Cint"><span class="Identifier">showInMemPng</span></a><span class="Other">(</span><span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">PNG</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">w</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">480</span><span class="Other">;</span> <span class="Identifier">h</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">320</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">JsonNode</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma">
-    <span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">IOError</span><span class="Other">,</span> <span class="Identifier">OSError</span><span class="Other">,</span> <span class="Identifier">PNGError</span><span class="Other">,</span> <span class="Identifier">NZError</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">WriteIOEffect</span><span class="Other">,</span> <span class="Identifier">ReadIOEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-For <tt class="docutils literal"><span class="pre">dkPng</span></tt>. Encode a png loaded from <tt class="docutils literal"><span class="pre">nimPNG</span></tt> in memory.
-
-</dd>
-<dt id="showBase64StringPng"><a name="showBase64StringPng,string,int,int"></a><pre><span class="Keyword">proc</span> <a href="#showBase64StringPng%2Cstring%2Cint%2Cint"><span class="Identifier">showBase64StringPng</span></a><span class="Other">(</span><span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">;</span> <span class="Identifier">w</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">480</span><span class="Other">;</span> <span class="Identifier">h</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">320</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">JsonNode</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-For <tt class="docutils literal"><span class="pre">dkPlot</span></tt>. Expects <tt class="docutils literal"><span class="pre">what</span></tt> to be an already base64-encoded png.
-
-</dd>
-<dt id="showHtml"><a name="showHtml,string"></a><pre><span class="Keyword">proc</span> <a href="#showHtml%2Cstring"><span class="Identifier">showHtml</span></a><span class="Other">(</span><span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">JsonNode</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-
-
-</dd>
-
-</dl></div>
-<div class="section" id="18">
-<h1><a class="toc-backref" href="#18">Templates</a></h1>
-<dl class="item">
-<dt id="show"><a name="show.t,DisplayKind,array[,int],untyped"></a><pre><span class="Keyword">template</span> <a href="#show.t%2CDisplayKind%2Carray%5B%2Cint%5D%2Cuntyped"><span class="Identifier">show</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="display.html#DisplayKind"><span class="Identifier">DisplayKind</span></a><span class="Other">;</span> <span class="Identifier">size</span><span class="Other">:</span> <span class="Identifier">array</span><span class="Other">[</span><span class="DecNumber">2</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span><span class="Other">;</span> <span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">untyped</span><span class="Other">)</span></pre></dt>
-<dd>
-Send back something to display. Also expects an array with <tt class="docutils literal"><span class="pre">[width, height]</span></tt> values.
-
-</dd>
-<dt id="show"><a name="show.t,DisplayKind,untyped"></a><pre><span class="Keyword">template</span> <a href="#show.t%2CDisplayKind%2Cuntyped"><span class="Identifier">show</span></a><span class="Other">(</span><span class="Identifier">kind</span><span class="Other">:</span> <a href="display.html#DisplayKind"><span class="Identifier">DisplayKind</span></a><span class="Other">;</span> <span class="Identifier">what</span><span class="Other">:</span> <span class="Identifier">untyped</span><span class="Other">)</span></pre></dt>
-<dd>
-Send back something to display.
-
-</dd>
-<dt id="latex"><a name="latex.t,varargs[string,]"></a><pre><span class="Keyword">template</span> <a href="#latex.t%2Cvarargs%5Bstring%2C%5D"><span class="Identifier">latex</span></a><span class="Other">(</span><span class="Identifier">str</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Other">`</span><span class="Operator">$</span><span class="Other">`</span><span class="Other">]</span><span class="Other">)</span></pre></dt>
-<dd>
-Send back a string as latex expression to display. Wraps the string in <tt class="docutils literal"><span class="pre">$$</span></tt>. Remember to escape <tt class="docutils literal"><span class="pre">\</span></tt>. Mimics <tt class="docutils literal"><span class="pre">echo</span></tt> so eg. <tt class="docutils literal"><span class="pre">latex &quot;x =&quot;, x</span></tt> works. 
-
-</dd>
-<dt id="md"><a name="md.t,varargs[string,]"></a><pre><span class="Keyword">template</span> <a href="#md.t%2Cvarargs%5Bstring%2C%5D"><span class="Identifier">md</span></a><span class="Other">(</span><span class="Identifier">str</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Other">`</span><span class="Operator">$</span><span class="Other">`</span><span class="Other">]</span><span class="Other">)</span></pre></dt>
-<dd>
-Send back a string as markdown to display. Can use it instead of <tt class="docutils literal"><span class="pre">echo</span></tt>.
-
-</dd>
-<dt id="html"><a name="html.t,varargs[string,]"></a><pre><span class="Keyword">template</span> <a href="#html.t%2Cvarargs%5Bstring%2C%5D"><span class="Identifier">html</span></a><span class="Other">(</span><span class="Identifier">str</span><span class="Other">:</span> <span class="Identifier">varargs</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">,</span> <span class="Other">`</span><span class="Operator">$</span><span class="Other">`</span><span class="Other">]</span><span class="Other">)</span></pre></dt>
-<dd>
-Send back a string as html to display. Can use it instead of <tt class="docutils literal"><span class="pre">echo</span></tt>.
-
-</dd>
-
+<a class="reference external" href="sockets.html">sockets</a>, <a class="reference external" href="messages.html">messages</a>, <a class="reference external" href="utils.html">utils</a>
 </dl></div>
 
   </div>
@@ -1350,7 +1243,7 @@ Send back a string as html to display. Can use it instead of <tt class="docutils
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br/>
-        <small>Made with Nim. Generated: 2020-08-11 08:09:08 UTC</small>
+        <small>Made with Nim. Generated: 2020-08-11 08:09:11 UTC</small>
       </div>
     </div>
   </div>
