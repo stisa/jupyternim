@@ -4,39 +4,33 @@ on:
     paths:
       - 'src/**'
       - 'examples/**'
+  workflow_dispatch:    
 jobs:
-  build_vdevel:
-    name: v_devel
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nim: [ '1.2.0', 'stable', 'devel' ]
+    name: Build on nim ${{ matrix.nim }}
     steps:
-    - uses: actions/checkout@v1
-    - name: Cache choosenim
-      id: cache-choosenim
-      uses: actions/cache@v1
-      with:
-        path: ~/.choosenim
-        key: ${{ runner.os }}-choosenim-devel
-    - name: Cache nimble
-      id: cache-nimble
-      uses: actions/cache@v1
-      with:
-        path: ~/.nimble
-        key: ${{ runner.os }}-nimble-devel
-    - name: Install Nim
-      if: steps.cache-choosenim.outputs.cache-hit != 'true' || steps.cache-nimble.outputs.cache-hit != 'true'
-      run: |
-        export CHOOSENIM_CHOOSE_VERSION="devel"
-        curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
-        sh init.sh -y
-    - name: Build project
-      run: |
-        export PATH=$HOME/.nimble/bin:$PATH
-        echo $PATH
-        nimble build -y
-        mkdir -p rel
-        mv jupyternim rel/
-    - name: Upload artifact
-      uses: actions/upload-artifact@master
-      with:
-        name: release
-        path: rel
+      - uses: actions/checkout@master
+        
+      - name: Cache choosenim
+        id: cache-choosenim
+        uses: actions/cache@v1
+        with:
+          path: ~/.choosenim
+          key: ${{ runner.os }}-choosenim-stable
+
+      - name: Cache nimble
+        id: cache-nimble
+        uses: actions/cache@v1
+        with:
+          path: ~/.nimble
+          key: ${{ runner.os }}-nimble-stable
+
+      - name: Setup nim
+        uses: jiro4989/setup-nim-action@v1.1.3
+        with:
+          nim-version: ${{ matrix.nim }}
+      - run: nimble build -Y
