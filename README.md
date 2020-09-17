@@ -14,6 +14,7 @@ Look at [example-notebook](examples/example-notebook.ipynb) for some examples,
 and at [example-display](examples/example-display.ipynb) for examples of displaying latex, md, etc.  
 
 NOTE: running a notebook with this creates a directory `~/.jupyternim` in which it stores blocks of code, pngs, compiled outputs, etc.
+Compilation output should be automatically cleaned up starting from version 0.6.0.
 
 Installation 
 ------------

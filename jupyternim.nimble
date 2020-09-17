@@ -1,13 +1,13 @@
 # Package
 
-version       = "0.5.8"
+version       = "0.6.0"
 author        = "stisa"
 description   = "A Jupyter Kernel for Nim"
 license       = "MIT"
 
 # Dependencies
 
-requires "nim >= 1.0.0"
+requires "nim >= 1.2.0"
 requires "zmq >= 0.3.1"
 requires "hmac"
 requires "nimSHA2"

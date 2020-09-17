@@ -28,8 +28,11 @@ proc showImgFile*(what:string, w:int=480,h:int=320):JsonNode =
   ## For `dkImageFile`. Reads the file to a string and encode it as base64.
   ## Can set width and height of the output.
   let mime = mimeDB.getMimetype(what.splitFile().ext)
+  var payload = readFile(what)
+  if mime != "image/svg+xml":
+    payload = payload.encode
   result = %*{
-    "data": {mime: encode(readFile(what)) }, # TODO: handle other mimetypes
+    "data": {mime: payload }, # TODO: handle other mimetypes
     "metadata": %*{mime: {"width": w, "height":h}},
     "transient": %* {}
   }

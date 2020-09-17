@@ -133,7 +133,7 @@ proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, 
     # hcr needs at least one extra cell to generate the initial proc
     shell.executingCellId = "hcrFirst"
     shell.code[shell.executingCellId] = "discard \"Generated for Hcr\""
-    writeFile(jnTempDir/ JNfile & "codeserver.nim", shell.servercode) 
+    writeFile(jnTempDir / JNfile & "codeserver.nim", shell.servercode) 
   
   debug "Write out codecells"
   writeCodeFile(shell)

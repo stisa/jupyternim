@@ -180,7 +180,8 @@ proc setupMsg(msg: var WireMessage, kind: WireType,
     msg.ident = parent.get.ident
     msg.parent_header = parent.get.header.some  
     msg.metadata = parent.get.metadata
-  debug "IS IDENT EMPTY? ", (msg.kind notin iopubTopics) and parent.isNone
+  if (msg.kind notin iopubTopics) and parent.isNone:
+    echo "IDENT EMPTY: please report this on github.com/stisa/jupyternim"
   #sign?
   
 proc kernelInfoMsg*(parent: WireMessage): ShellMsg =
