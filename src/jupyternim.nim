@@ -1,5 +1,9 @@
 import ./jupyternimpkg/[sockets, messages, utils]
-import os, json, std/exitprocs
+import os, json
+
+when NimMinor > 2: # Changes in devel
+  import std/exitprocs
+
 from osproc import execProcess
 from strutils import contains, strip
 
@@ -150,7 +154,10 @@ proc runKernel(connfile:string) =
   
   var kernel: Kernel = initKernel(connfile)
 
-  addExitProc(proc() = kernel.shutdown())
+  when NimMinor > 2:
+    addExitProc(proc() = kernel.shutdown())
+  else:
+    addQuitProc(proc() {.noconv.}= kernel.shutdown())
   setControlCHook(proc(){.noconv.}=quit())
   
   kernel.loop()
