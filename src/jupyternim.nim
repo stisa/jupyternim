@@ -1,7 +1,7 @@
 import ./jupyternimpkg/[sockets, messages, utils]
 import os, json
 
-when NimMinor > 2: # Changes in devel
+when (NimMajor, NimMinor, NimPatch) > (1,2,5): # Changes in devel
   import std/exitprocs
 
 from osproc import execProcess
@@ -154,10 +154,9 @@ proc runKernel(connfile:string) =
   
   var kernel: Kernel = initKernel(connfile)
 
-  when NimMinor > 2:
+  when (NimMajor, NimMinor, NimPatch) > (1,2,5):
     addExitProc(proc() = kernel.shutdown())
-  else:
-    addQuitProc(proc() {.noconv.}= kernel.shutdown())
+  
   setControlCHook(proc(){.noconv.}=quit())
   
   kernel.loop()
