@@ -1,10 +1,12 @@
-name: Build
+name: Build jupyternim, check display.nim
 on: 
   push:
     paths:
       - 'src/**'
       - 'examples/**'
   workflow_dispatch:    
+  schedule:
+    - cron: '3 2 1 * *' 
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,3 +36,4 @@ jobs:
         with:
           nim-version: ${{ matrix.nim }}
       - run: nimble build -Y
+      - run: nim check src/jupyternimpkg/display.nim
