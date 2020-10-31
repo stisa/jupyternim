@@ -4,17 +4,16 @@ Jupyter Nim
 This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim.  
 Works with `notebook`, `lab`, `nteract`, should even work in `vscode-python`.  
 If you use `nteract` or `vscode-python`, there are still some problems, please report them.  
-For `jupyter lab`, you can also install the companion extension by
-```bash
-jupyter labextension install jupyternim-labextension
-```
-to provide syntax highlighting.
+For `jupyter lab`, you can also install the companion extension by `jupyter labextension install jupyternim-labextension`  
+that provides syntax highlighting.
   
 Look at [example-notebook](examples/example-notebook.ipynb) for some examples,  
 and at [example-display](examples/example-display.ipynb) for examples of displaying latex, md, etc.  
 
 NOTE: running a notebook with this creates a directory `~/.jupyternim` in which it stores blocks of code, pngs, compiled outputs, etc.
 Compilation output should be automatically cleaned up starting from version 0.6.0.
+
+NOTE2: `nteract` support is very wip, also `nteract` doesn't add a cellId to notebook cells so changing types is buggy, I'll work on it and maybe also provide a patch for nteract, but it's low priority, help appreciated.
 
 Installation 
 ------------
