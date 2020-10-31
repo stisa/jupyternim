@@ -1,9 +1,20 @@
 TODO
 -----
 
-- Share context between blocks
+- [ ] improve installation experience, eg: wording of messages, checking for libzmq and fail gracefully if not found, etc
+- [ ] improve the [display](https://github.com/stisa/jupyternim/blob/master/src/jupyternimpkg/display.nim) module
+- [ ] example notebooks, eg with [numericalnim](https://github.com/HugoGranstrom/numericalnim) and arraymancer
+- [ ] test message spec against jupyter (with CI too would be nice)
+- [ ] documentation
+- [ ] readme improvements
+- [ ] Share context between blocks
+  - [ ] work on nim compiler and improve hot code reloading
+  - [ ] rewrite hotcodereloading
+- [ ] a logo?
 
-Ideas:
+Some of these things may be harder than the rest :)
+
+Old ideas:
 
 Inject a block statement before the code to be executed and a locals 
 after it.
