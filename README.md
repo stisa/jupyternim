@@ -20,7 +20,7 @@ Installation
 ------------
 TL,DR:
 ```
-nimble install https://github.com/stisa/jupyternim -y
+nimble install jupyternim -y
 ```
 Done!
 
