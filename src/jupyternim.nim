@@ -65,7 +65,7 @@ proc installKernelSpec() =
   echo "[Jupyternim] Copying Jupyternim kernelspec to ", kernelspecdir
   copyDir(pkgDir / "jupyternimspec", kernelspecdir)
   
-  echo "[Jupyternim] Nim kernel registered, you can now try it in `jupyter lab`"
+  echo "[Jupyternim] Nim kernel registered, you can now try it in favourite jupyter-compatible environment"
   
   var zmql = loadLib(zmqdll)
   echo "[Jupyternim] Found zmq library: ", not zmql.isNil()
