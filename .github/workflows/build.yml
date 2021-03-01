@@ -32,7 +32,7 @@ jobs:
           key: ${{ runner.os }}-nimble-stable
 
       - name: Setup nim
-        uses: jiro4989/setup-nim-action@v1.1.3
+        uses: jiro4989/setup-nim-action@v1.3.0
         with:
           nim-version: ${{ matrix.nim }}
       - run: nimble build -Y
