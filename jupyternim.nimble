@@ -8,7 +8,7 @@ license       = "MIT"
 # Dependencies
 
 requires "nim >= 1.2.0"
-requires "zmq >= 0.3.1"
+requires "zmq >= 0.3.1 & < 0.4.0 "
 requires "hmac"
 requires "nimSHA2"
 requires "nimPNG"
