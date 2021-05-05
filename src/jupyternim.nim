@@ -67,7 +67,7 @@ proc installKernelSpec() =
   
   echo "[Jupyternim] Nim kernel registered, you can now try it in favourite jupyter-compatible environment"
   
-  var zmql = loadLib(zmqdll)
+  var zmql = loadLibPattern(zmqdll)
   echo "[Jupyternim] Found zmq library: ", not zmql.isNil()
   if zmql.isNil():
     echo "[Jupyternim] WARNING: No zmq library could be found, please install it"
