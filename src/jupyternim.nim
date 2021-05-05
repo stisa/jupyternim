@@ -61,7 +61,7 @@ proc installKernelSpec() =
   # should be equivalent to `jupyter-kernelspec install pkgDir/jupyternimspec --user`
   let kernelspecdir = when defined windows:  getEnv("APPDATA") / "jupyter" / "kernels" / "jupyternimspec"
                       elif defined(macosx) or defined(macos): expandTilde("~/Library/Jupyter/kernels") / "jupyternimspec" 
-                      elif defined linux: "~/.local/share/jupyter/kernels" / "jupyternimspec"
+                      elif defined linux: expandTilde("~/.local/share/jupyter/kernels") / "jupyternimspec"
   echo "[Jupyternim] Copying Jupyternim kernelspec to ", kernelspecdir
   copyDir(pkgDir / "jupyternimspec", kernelspecdir)
   
