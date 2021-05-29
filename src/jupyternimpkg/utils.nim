@@ -59,7 +59,7 @@ proc filter*[T](seq1: openarray[T],
 
 # Useful constants
 const 
-  JNKernelVersion* = "0.6.1" # should match the one in the nimble file
+  JNKernelVersion* = "0.6.2" # should match the one in the nimble file
   JNuser* = "kernel"
   JNprotocolVers* = 5.3
 var 
