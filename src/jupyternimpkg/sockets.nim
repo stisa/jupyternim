@@ -89,6 +89,10 @@ else:
 
 var flags: seq[string] = @defaultFlags
 
+proc escapePath(path: string): string =
+  ## Wraps a path in quotes so that it does not cause issues with spaces
+  result = $'"' & path & $'"'
+
 proc writeCodeFile(shell:Shell) =
   ## Write out the file composed by the cells that were run until now.
   ## The last cell is wrapped in a proc so that it gets run by the codeserver
@@ -148,17 +152,18 @@ proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, 
   debug "Recompile codeserver"
   debug r"nim c " & flatten(flags) & flatten(requiredFlags) & jnTempDir / JNfile & "codecell|server.nim"
   when defined useHcr:
-    result = execCmdEx(r"nim c " & flatten(flags) & flatten(requiredFlags) & jnTempDir / JNfile & "codeserver.nim") # compile the codeserver
+    const file = "codeserver.nim" # compile the codeserver
   else:
-    result = execCmdEx(r"nim c " & flatten(flags) & flatten(requiredFlags) & jnTempDir / JNfile & "codecells.nim") # compile the codeserver
+    const file = "codecells.nim"
+  result = execCmdEx(r"nim c " & flatten(flags) & flatten(requiredFlags) & escapePath(jnTempDir / JNfile & file)) # compile the codeserver
 
 proc createShell*(ip: string, shellport: BiggestInt, pub: IOPub): Shell =
   ## Create a shell socket
   #debug "shell at ", ip, " ", shellport
 
   # flags setup
-  requiredFlags[1].add(jnTempDir / JNoutCodeServerName) # complete the -o: flags
-  flags.add("-p:" & $'"' & getCurrentDir() & '"') # can't importc at compile time
+  requiredFlags[1].add(escapePath(jnTempDir / JNoutCodeServerName)) # complete the -o: flags
+  flags.add("-p:" & escapePath(getCurrentDir())) # can't importc at compile time
   when not defined(release):
     flags[1] = "-d:debug" #switch release to debug for the compiled file too
     flags[2] = ""#"--verbosity:3" # remove verbosity:0 flag
