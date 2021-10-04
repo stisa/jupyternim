@@ -158,7 +158,7 @@ proc createShell*(ip: string, shellport: BiggestInt, pub: IOPub): Shell =
 
   # flags setup
   requiredFlags[1].add(jnTempDir / JNoutCodeServerName) # complete the -o: flags
-  flags.add("-p:" & getCurrentDir()) # can't importc at compile time
+  flags.add("-p:" & $'"' & getCurrentDir() & '"') # can't importc at compile time
   when not defined(release):
     flags[1] = "-d:debug" #switch release to debug for the compiled file too
     flags[2] = ""#"--verbosity:3" # remove verbosity:0 flag
@@ -287,7 +287,6 @@ proc handleExecute(shell: var Shell, msg: WireMessage) =
   # Compile and send compilation messages to jupyter's stdout
   shell.code[cellId] = code
   var compilationResult = shell.updateCodeServer()
-
   # debug "file before:"
   # debug readFile(jnTempDir / "codecells.nim")
   # debug "file end"
