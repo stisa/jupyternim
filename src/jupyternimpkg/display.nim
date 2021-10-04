@@ -105,7 +105,7 @@ template show*(kind:DisplayKind, what:untyped) =
   elif kind == dkPlot:
     content = showBase64StringPng(what, size[0], size[1])
   else:
-    echo "Unsupported kind for show ", kind
+    {.error: "Unsupported kind for show: " & $kind.}
   
   stdout.write(startmarker, $content, endmarker)
   stdout.flushFile()
