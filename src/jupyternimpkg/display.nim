@@ -88,7 +88,8 @@ template show*(kind:DisplayKind, size: array[2, int], what:untyped) =
   elif kind == dkPlot:
     content = showBase64StringPng(what, size[0], size[1])
   else:
-    echo "Unsupported kind for show ", kind
+    {.error: "Unsupported kind for show: " & $kind.}
+    
   stdout.write(startmarker, $content, endmarker)
   stdout.flushFile()
 
@@ -102,10 +103,8 @@ template show*(kind:DisplayKind, what:untyped) =
     content = showImgFile(what)
   elif kind == dkFile:
     content = showBinaryFile(what)
-  elif kind == dkPlot:
-    content = showBase64StringPng(what, size[0], size[1])
   else:
-    echo "Unsupported kind for show ", kind
+    {.error: "Unsupported kind for show: " & $kind.}
   
   stdout.write(startmarker, $content, endmarker)
   stdout.flushFile()
