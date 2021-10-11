@@ -103,8 +103,6 @@ template show*(kind:DisplayKind, what:untyped) =
     content = showImgFile(what)
   elif kind == dkFile:
     content = showBinaryFile(what)
-  elif kind == dkPlot:
-    content = showBase64StringPng(what, size[0], size[1])
   else:
     {.error: "Unsupported kind for show: " & $kind.}
   
