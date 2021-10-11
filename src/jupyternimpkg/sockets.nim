@@ -89,10 +89,6 @@ else:
 
 var flags: seq[string] = @defaultFlags
 
-proc escapePath(path: string): string =
-  ## Wraps a path in quotes so that it does not cause issues with spaces
-  result = $'"' & path & $'"'
-
 proc writeCodeFile(shell:Shell) =
   ## Write out the file composed by the cells that were run until now.
   ## The last cell is wrapped in a proc so that it gets run by the codeserver
@@ -155,15 +151,15 @@ proc updateCodeServer(shell: var Shell, firstInit=false): tuple[output: string, 
     const file = "codeserver.nim" # compile the codeserver
   else:
     const file = "codecells.nim"
-  result = execCmdEx(r"nim c " & flatten(flags) & flatten(requiredFlags) & escapePath(jnTempDir / JNfile & file)) # compile the codeserver
+  result = execCmdEx(r"nim c " & flatten(flags) & flatten(requiredFlags) & escape(jnTempDir / JNfile & file)) # compile the codeserver
 
 proc createShell*(ip: string, shellport: BiggestInt, pub: IOPub): Shell =
   ## Create a shell socket
   #debug "shell at ", ip, " ", shellport
 
   # flags setup
-  requiredFlags[1].add(escapePath(jnTempDir / JNoutCodeServerName)) # complete the -o: flags
-  flags.add("-p:" & escapePath(getCurrentDir())) # can't importc at compile time
+  requiredFlags[1].add(escape(jnTempDir / JNoutCodeServerName)) # complete the -o: flags
+  flags.add("-p:" & escape(getCurrentDir())) # can't importc at compile time
   when not defined(release):
     flags[1] = "-d:debug" #switch release to debug for the compiled file too
     flags[2] = ""#"--verbosity:3" # remove verbosity:0 flag
