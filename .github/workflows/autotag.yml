@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
-      - uses: butlerlogic/action-autotag@1.1.1
+      - uses: butlerlogic/action-autotag@stable
         with:
           strategy: regex 
           root: "${{ github.event.repository.name }}.nimble"
