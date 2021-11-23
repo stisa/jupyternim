@@ -24,7 +24,7 @@ after install:
     # M1 Homebrew lives in /opt/homebrew; libzmq isn't in /usr/local.
     # Setting DYLD_LIBRARY_PATH works in some cases, but macOS "SIP" nulls out
     # DYLD_LIBRARY_PATH for some child procs (/bin/sh, /usr/bin/env). gorgeEx
-    # uses /bin/sh so running jupyternym from NimScript will fail to find
+    # uses /bin/sh so running jupyternim from NimScript will fail to find
     # libzmq.dylib.
     echo "\nTo install Jupyter Nim kernel, run:\n"
     echo "  jupyternim\n"
