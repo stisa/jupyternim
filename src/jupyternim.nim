@@ -1,7 +1,7 @@
 import ./jupyternimpkg/[sockets, messages, utils]
 import os, json, strutils
 
-when (NimMajor, NimMinor, NimPatch) > (1,3,5): # Changes in devel
+when (NimMajor, NimMinor, NimPatch) > (1, 3, 5): # Changes in devel
   import std/exitprocs
 
 from osproc import execProcess
@@ -43,12 +43,13 @@ proc installKernelSpec() =
   var pkgDir = execProcess("nimble path jupyternim").strip().splitLines()[^1]
   var (h, t) = pkgDir.splitPath()
 
-  var pathToJN = (if t == "src": h else: pkgDir) / "jupyternim" # move jupyternim to a const string in common.nim
+  var pathToJN = (if t == "src": h else: pkgDir) /
+      "jupyternim" # move jupyternim to a const string in common.nim
   pathToJN = pathToJN.changeFileExt(ExeExt)
 
   let kernelspec = %*{
     "argv": [pathToJN, "{connection_file}"],
-    "display_name": "Nim " & NimVersion,
+    "display_name": "Nim",
     "language": "nim",
     "file_extension": ".nim"}
 
@@ -59,9 +60,12 @@ proc installKernelSpec() =
   #  ~/Library/Jupyter/kernels (Mac)
   #  getEnv("APPDATA") & "jupyter" / "kernels" (Windows)
   # should be equivalent to `jupyter-kernelspec install pkgDir/jupyternimspec --user`
-  let kernelspecdir = when defined windows:  getEnv("APPDATA") / "jupyter" / "kernels" / "jupyternimspec"
-                      elif defined(macosx) or defined(macos): expandTilde("~/Library/Jupyter/kernels") / "jupyternimspec"
-                      elif defined linux: expandTilde("~/.local/share/jupyter/kernels") / "jupyternimspec"
+  let kernelspecdir = when defined windows: getEnv("APPDATA") / "jupyter" /
+      "kernels" / "jupyternimspec"
+                      elif defined(macosx) or defined(macos): expandTilde(
+                          "~/Library/Jupyter/kernels") / "jupyternimspec"
+                      elif defined linux: expandTilde(
+                          "~/.local/share/jupyter/kernels") / "jupyternimspec"
   echo "[Jupyternim] Copying Jupyternim kernelspec to ", kernelspecdir
   copyDir(pkgDir / "jupyternimspec", kernelspecdir)
 
@@ -103,33 +107,33 @@ proc initKernel(connfile: string): Kernel =
   result.running = true
 
 proc loop(kernel: var Kernel) =
-    #spawn kernel.hb.beat()
-    debug "Entering main loop, filename: ", JNfile
-    while kernel.running:
-      # this is gonna crash due to timeouts... or make the pc explode with messages
+  #spawn kernel.hb.beat()
+  debug "Entering main loop, filename: ", JNfile
+  while kernel.running:
+    # this is gonna crash due to timeouts... or make the pc explode with messages
 
-      if kernel.shell.hasMsgs:
-        debug "shell..."
-        kernel.shell.receive()
+    if kernel.shell.hasMsgs:
+      debug "shell..."
+      kernel.shell.receive()
 
-      if kernel.control.hasMsgs:
-        debug "control..."
-        kernel.control.receive()
+    if kernel.control.hasMsgs:
+      debug "control..."
+      kernel.control.receive()
 
-      if kernel.pub.hasMsgs:
-        debug "pub..."
-        kernel.pub.receive()
+    if kernel.pub.hasMsgs:
+      debug "pub..."
+      kernel.pub.receive()
 
-      if kernel.sin.hasMsgs:
-        debug "stdin..."
-        kernel.sin.receive()
+    if kernel.sin.hasMsgs:
+      debug "stdin..."
+      kernel.sin.receive()
 
-      if kernel.hb.hasMsgs:
-        debug "ping..."
-        kernel.hb.pong()
+    if kernel.hb.hasMsgs:
+      debug "ping..."
+      kernel.hb.pong()
 
-      #debug "Looped once"
-      sleep(300) # wait a bit before trying again TODO: needed?
+    #debug "Looped once"
+    sleep(300) # wait a bit before trying again TODO: needed?
 
 proc shutdown(k: var Kernel) {.noconv.} =
   debug "Shutting Down..."
@@ -149,15 +153,15 @@ proc shutdown(k: var Kernel) {.noconv.} =
           echo "[Jupyternim] failed to delete ", f.path
     debug "Cleaned up files from /.jupyternim"
 
-proc runKernel(connfile:string) =
+proc runKernel(connfile: string) =
   # Main loop: this is executed when jupyter starts the kernel
 
   var kernel: Kernel = initKernel(connfile)
 
-  when (NimMajor, NimMinor, NimPatch) > (1,3,5):
+  when (NimMajor, NimMinor, NimPatch) > (1, 3, 5):
     addExitProc(proc() = kernel.shutdown())
 
-  setControlCHook(proc(){.noconv.}=quit())
+  setControlCHook(proc(){.noconv.} = quit())
 
   kernel.loop()
 
@@ -167,7 +171,7 @@ of 0: # no args, assume we are installing the kernel
   installKernelSpec()
 of 1:
   if arguments[0] == "-v":
-    echo "Jupyternim ", if defined debug: "debug " else:"", "version: ", JNKernelVersion
+    echo "Jupyternim ", if defined debug: "debug " else: "", "version: ", JNKernelVersion
     echo "  hcr enabled: ", defined(useHcr)
   elif arguments[0][^4..^1] == "json": # TODO: file splitFile bug with C:\Users\stisa\AppData\Roaming\jupyter\runtime\kernel-9f74a25e-d932-4212-98ae-693f8d18ed55.json
     runKernel(arguments[0])
