@@ -48,7 +48,7 @@ proc installKernelSpec() =
 
   let kernelspec = %*{
     "argv": [pathToJN, "{connection_file}"],
-    "display_name": "Nim",
+    "display_name": "Nim " & NimVersion,
     "language": "nim",
     "file_extension": ".nim"}
 
