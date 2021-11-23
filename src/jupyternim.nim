@@ -1,5 +1,5 @@
 import ./jupyternimpkg/[sockets, messages, utils]
-import os, json
+import os, json, strutils
 
 when (NimMajor, NimMinor, NimPatch) > (1,3,5): # Changes in devel
   import std/exitprocs
@@ -11,17 +11,17 @@ import dynlib # to check for zmq
 
 from zmq import zmqdll # to check against the name nim-zmq uses
 
-## A Jupyter Kernel for Nim.  
-## 
-## Can be built with -d:useHcr for **very** experimental hot code reloading support.  
-##  
+## A Jupyter Kernel for Nim.
+##
+## Can be built with -d:useHcr for **very** experimental hot code reloading support.
+##
 ## Install with:
-## 
+##
 ## .. code-block::
 ##   nimble install jupyternim -y
-## 
+##
 ## Run ``jupyternim -v`` to display version and some info about compilation flags, eg. hcr and debug.
-## 
+##
 ## See also the [display](./display.html) package.
 
 type Kernel = object
@@ -40,7 +40,7 @@ proc installKernelSpec() =
   # no connection file passed: assume we're registering the kernel with jupyter
   echo "[Jupyternim] Installing Jupyter Nim Kernel"
   # TODO: assume this can fail, check exitcode
-  var pkgDir = execProcess("nimble path jupyternim").strip()
+  var pkgDir = execProcess("nimble path jupyternim").strip().splitLines()[^1]
   var (h, t) = pkgDir.splitPath()
 
   var pathToJN = (if t == "src": h else: pkgDir) / "jupyternim" # move jupyternim to a const string in common.nim
@@ -60,13 +60,13 @@ proc installKernelSpec() =
   #  getEnv("APPDATA") & "jupyter" / "kernels" (Windows)
   # should be equivalent to `jupyter-kernelspec install pkgDir/jupyternimspec --user`
   let kernelspecdir = when defined windows:  getEnv("APPDATA") / "jupyter" / "kernels" / "jupyternimspec"
-                      elif defined(macosx) or defined(macos): expandTilde("~/Library/Jupyter/kernels") / "jupyternimspec" 
+                      elif defined(macosx) or defined(macos): expandTilde("~/Library/Jupyter/kernels") / "jupyternimspec"
                       elif defined linux: expandTilde("~/.local/share/jupyter/kernels") / "jupyternimspec"
   echo "[Jupyternim] Copying Jupyternim kernelspec to ", kernelspecdir
   copyDir(pkgDir / "jupyternimspec", kernelspecdir)
-  
+
   echo "[Jupyternim] Nim kernel registered, you can now try it in favourite jupyter-compatible environment"
-  
+
   var zmql = loadLibPattern(zmqdll)
   echo "[Jupyternim] Found zmq library: ", not zmql.isNil()
   if zmql.isNil():
@@ -76,7 +76,7 @@ proc installKernelSpec() =
   when defined useHcr:
     echo "[Jupyternim] Note: jupyternim has hotcodereloading:on, it is **very** unstable"
     echo "[Jupyternim] Please report any issues to https://github.com/stisa/jupyternim"
-  
+
   quit(0)
 
 proc initKernel(connfile: string): Kernel =
@@ -87,9 +87,9 @@ proc initKernel(connfile: string): Kernel =
   if not connfile.fileExists:
     debug "Connection file doesn't exit at ", connfile
     quit(1)
-  
+
   let connmsg = connfile.parseConnMsg()
-  if not dirExists(jnTempDir): 
+  if not dirExists(jnTempDir):
     # Ensure temp folder exists
     createDir(jnTempDir)
 
@@ -99,7 +99,7 @@ proc initKernel(connfile: string): Kernel =
       result.pub) # Initialize shell
   result.control = createControl(connmsg.ip, connmsg.control_port) # Initialize control
   result.sin = createStdIn(connmsg.ip, connmsg.stdin_port) # Initialize stdin
-  
+
   result.running = true
 
 proc loop(kernel: var Kernel) =
@@ -107,19 +107,19 @@ proc loop(kernel: var Kernel) =
     debug "Entering main loop, filename: ", JNfile
     while kernel.running:
       # this is gonna crash due to timeouts... or make the pc explode with messages
-      
+
       if kernel.shell.hasMsgs:
         debug "shell..."
         kernel.shell.receive()
-      
+
       if kernel.control.hasMsgs:
         debug "control..."
         kernel.control.receive()
-      
+
       if kernel.pub.hasMsgs:
         debug "pub..."
         kernel.pub.receive()
-      
+
       if kernel.sin.hasMsgs:
         debug "stdin..."
         kernel.sin.receive()
@@ -151,14 +151,14 @@ proc shutdown(k: var Kernel) {.noconv.} =
 
 proc runKernel(connfile:string) =
   # Main loop: this is executed when jupyter starts the kernel
-  
+
   var kernel: Kernel = initKernel(connfile)
 
   when (NimMajor, NimMinor, NimPatch) > (1,3,5):
     addExitProc(proc() = kernel.shutdown())
-  
+
   setControlCHook(proc(){.noconv.}=quit())
-  
+
   kernel.loop()
 
 let arguments = commandLineParams() # [0] is ususally the connection file
