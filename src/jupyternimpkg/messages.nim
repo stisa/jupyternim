@@ -1,5 +1,5 @@
 import json, options, osproc, strutils
-import hmac, nimSHA2, regex
+import hmac, nimSHA2
 import ./utils
 
 
@@ -185,12 +185,7 @@ proc setupMsg(msg: var WireMessage, kind: WireType,
   #sign?
 
 proc parseNimVersion*(): string =
-  let text = execCmdEx("nim -v").output.splitLines[0]
-  var m: RegexMatch
-  if match(text, re".+ Version ([^\s]+).*", m):
-    result = m.group(0, text)[0]
-  else:
-    result = NimVersion
+  result = execCmdEx("nim -v").output.splitLines[0].split("Version")[1].split(" ")[1]
 
 proc kernelInfoMsg*(parent: WireMessage): ShellMsg =
   result.setupMsg(kernel_info_reply, parent.some)
@@ -207,7 +202,7 @@ proc kernelInfoMsg*(parent: WireMessage): ShellMsg =
     },
     "banner": ""
   }
-  
+
 proc replyErrorMsg*(exec_count: int, errname, errvalue: string,
               tracebacks: seq[string]= @[],
               parent: WireMessage): ShellMsg =
