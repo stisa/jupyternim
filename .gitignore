@@ -9,3 +9,4 @@ inimtemp
 *.dll
 old/
 inim/
+/jupyternim

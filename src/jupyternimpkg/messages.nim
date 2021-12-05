@@ -1,12 +1,12 @@
-import json, options, strutils
+import json, options, osproc, strutils
 import hmac, nimSHA2
 import ./utils
 
 
-type 
+type
   WireType* = enum
     Unknown,
-    
+
     kernel_info_request,
     execute_request,
     inspect_request,
@@ -43,7 +43,7 @@ type
     comm_open
     comm_close
     comm_msg
-  
+
   WireMessage* = object
     #msg_type: WireType # Convenience, this is not part of the spec
     ## Describes a raw message as passed by Jupyter/Ipython
@@ -78,12 +78,12 @@ var ConnKey: string # Key used to sign messages
 proc parseConnMsg*(connfile: string): ConnectionFile =
   result = parseFile(connfile).to(ConnectionFile)
   ConnKey = result.key
-  setupFileNames() # update the filenames on kernel start 
+  setupFileNames() # update the filenames on kernel start
   debug "FROM MESSAGES: ", JNfile, " out ", JNoutCodeservername
   debug result
 
 proc initHeader(msg_id, date: string, msg_type:WireType): WireHeader =
-  WireHeader( msg_id: msg_id, session:JNsession, username:JNuser, date:date, 
+  WireHeader( msg_id: msg_id, session:JNsession, username:JNuser, date:date,
               msg_type: msg_type, version: $JNprotocolVers)
 
 proc kind*(m: WireMessage): WireType = m.header.msg_type
@@ -103,7 +103,7 @@ proc decode*(raw: openarray[string]): WireMessage =
   try:
     result.header = parseJson(raw[3]).to(WireHeader)
   except KeyError as e:
-    var jsonheader = parseJson(raw[3]) 
+    var jsonheader = parseJson(raw[3])
     debug e.msg, "json: ", parseJson(raw[3])
     #if spec 5.2 date isn't here???
     jsonheader["date"] = % ""
@@ -116,9 +116,9 @@ proc decode*(raw: openarray[string]): WireMessage =
     result.parent_header = none(WireHeader)
   result.metadata = parseJson(raw[5])
   result.content = parseJson(raw[6])
-  
+
   debug "METADATA", result.metadata
-  
+
   if result.kind == Unknown:
     debug "unhandled msg_type ", result.kind, " rawfollows:" # Dump unknown messages
     debug $raw
@@ -130,10 +130,10 @@ proc sign(msg: WireMessage, key: string): string =
     encodedParent = $(%* msg.parent_header.get)
   let partToSign = $(%* msg.header) & encodedParent & $msg.metadata & $msg.content
   result = hmac.hmac_sha256(key, partToSign).hex.toLowerAscii
-  
+
 proc encode*(msg: WireMessage, key: string = ConnKey): seq[string] =
   ## Encode a message following wire spec, into a seq of strings
-  
+
   var encodedParent: string = "{}" # start as empty json obj
   if msg.parent_header.isSome:
     encodedParent = $(%* msg.parent_header.get)
@@ -168,38 +168,43 @@ type
 const iopubTopics = { execute_result , stream, display_data, update_display_data,
                     execute_input, error, status, clear_output, debug_event }
 
-proc setupMsg(msg: var WireMessage, kind: WireType, 
+proc setupMsg(msg: var WireMessage, kind: WireType,
               parent: Option[WireMessage] = none(WireMessage)) =
   msg = WireMessage()
 
   if msg.kind in iopubTopics: msg.ident = $msg.kind
-  msg.header = initHeader(genUUID(), getISOstr(), kind)  
+  msg.header = initHeader(genUUID(), getISOstr(), kind)
   msg.metadata = %* {}
-  
+
   if parent.isSome:
     msg.ident = parent.get.ident
-    msg.parent_header = parent.get.header.some  
+    msg.parent_header = parent.get.header.some
     msg.metadata = parent.get.metadata
   if (msg.kind notin iopubTopics) and parent.isNone:
     echo "IDENT EMPTY: please report this on github.com/stisa/jupyternim"
   #sign?
-  
+
+proc parseNimVersion*(): string =
+  result = execCmdEx("nim -v").output.splitLines[0].split("Version")[1].split(" ")[1]
+
 proc kernelInfoMsg*(parent: WireMessage): ShellMsg =
   result.setupMsg(kernel_info_reply, parent.some)
+
   result.content = %* {
     "protocol_version": $JNprotocolVers,
     "implementation": "jupyternim",
     "implementation_version": JNKernelVersion,
     "language_info": {
       "name": "nim",
-      "version": NimVersion,
+      "version": parseNimVersion(),
       "mimetype": "text/x-nim",
       "file_extension": ".nim",
     },
     "banner": ""
   }
+
 proc replyErrorMsg*(exec_count: int, errname, errvalue: string,
-              tracebacks: seq[string]= @[], 
+              tracebacks: seq[string]= @[],
               parent: WireMessage): ShellMsg =
   result.setupMsg(execute_reply, parent.some)
   result.content = %* {
@@ -214,7 +219,7 @@ proc replyErrorMsg*(exec_count: int, errname, errvalue: string,
 proc replyErrorMsg*(forMsg:WireType, errname, errvalue: string,
               tracebacks: seq[string]= @[], exec_count: int = 0,
               parent: WireMessage): ShellMsg =
-  
+
   assert(forMsg in {inspect_reply, complete_reply})
   result.setupMsg(forMsg, parent.some)
   result.content = %* {
@@ -224,7 +229,7 @@ proc replyErrorMsg*(forMsg:WireType, errname, errvalue: string,
     "traceback": tracebacks
   }
 
-proc execResultMsg*( count: int, data: string, # or JsonNode? 
+proc execResultMsg*( count: int, data: string, # or JsonNode?
                     parent: Option[WireMessage]=none(WireMessage)): ShellMsg =
   # show from display.nim ought to be handled here too?
   result.setupMsg(execute_result, parent)
@@ -234,16 +239,16 @@ proc execResultMsg*( count: int, data: string, # or JsonNode?
       "metadata": %*{}
   }
 
-proc displayExecResMsg*(count: int, ddcontent: JsonNode, 
+proc displayExecResMsg*(count: int, ddcontent: JsonNode,
                     parent: Option[WireMessage]=none(WireMessage)): PubMsg =
-  # we expect to mostly see this from the display module, so content is 
+  # we expect to mostly see this from the display module, so content is
   # already complete, but in string form
   result.setupMsg(execute_result, parent)
   result.content = ddcontent
   result.content["execution_count"] = % count
   result.content["metadata"] = %* {}
 
-proc execReplyMsg*(count: int, status: Status, # or JsonNode? 
+proc execReplyMsg*(count: int, status: Status, # or JsonNode?
                   parent: WireMessage): ShellMsg =
   result.setupMsg(execute_reply, parent.some)
   result.content = %* {
@@ -253,7 +258,7 @@ proc execReplyMsg*(count: int, status: Status, # or JsonNode?
     "user_expressions": %*{}
   }
 
-proc inspectReplyMsg*( status: Status, found: bool = false, 
+proc inspectReplyMsg*( status: Status, found: bool = false,
                       data: JsonNode = %* {}, metadata: JsonNode = %* {},
                       parent: Option[WireMessage]): ShellMsg=
   result.setupMsg(inspect_reply, parent)
@@ -281,7 +286,7 @@ proc completeReplyMsg*(status: Status, matches: seq[string],
     "status": status
   }
   # debug msg
-  
+
 proc historyReplyMsg*( history: JsonNode, parent: Option[WireMessage],
                       metadata: JsonNode = %* {}): ShellMsg=
   echo "[Jupyternim] Unimplemented: history_request" # TODO: error?
@@ -294,7 +299,7 @@ proc historyReplyMsg*( history: JsonNode, parent: Option[WireMessage],
       # depending on whether output was False or True, respectively.
     "history": history,
   }
-  
+
 proc commReplyMsg*(parent: Option[WireMessage]=none(WireMessage),
                       metadata: JsonNode = %* {}): ShellMsg=
   echo "[Jupyternim] Unimplemented: history_request" # TODO: error?
@@ -304,12 +309,12 @@ proc commReplyMsg*(parent: Option[WireMessage]=none(WireMessage),
 
 ### IOPub Messages
 
-proc statusMsg*( s: State, 
+proc statusMsg*( s: State,
                 parent: Option[WireMessage] = none(WireMessage)): PubMsg =
   result.setupMsg(status, parent)
   result.content = %* {"execution_state": s}
 
-proc executeInputMsg*(count:int, code: string, 
+proc executeInputMsg*(count:int, code: string,
                 parent: Option[WireMessage]=none(WireMessage)): PubMsg =
   result.setupMsg(execute_input, parent)
   result.content = %* {
@@ -317,11 +322,11 @@ proc executeInputMsg*(count:int, code: string,
     "code": code,
   }
 
-proc streamMsg*( streamname, text: string, 
+proc streamMsg*( streamname, text: string,
                 parent: Option[WireMessage]=none(WireMessage)): PubMsg =
   result.setupMsg(stream, parent)
   result.content = %*{
-    "name": streamName, 
+    "name": streamName,
     "text": text
   }
 
@@ -335,9 +340,9 @@ proc errorMsg*(errname, errvalue: string,
     "traceback": tracebacks, # traceback frames as strings
   }
 
-proc displayDataMsg*(ddcontent: JsonNode, 
+proc displayDataMsg*(ddcontent: JsonNode,
                     parent: Option[WireMessage]=none(WireMessage)): PubMsg =
-  # we expect to mostly see this from the display module, so content is 
+  # we expect to mostly see this from the display module, so content is
   # already complete, but in string form
   result.setupMsg(display_data, parent)
   result.content = ddcontent
@@ -351,8 +356,8 @@ proc shutdownMsg*(kind: WireType, parent: Option[WireMessage]): ControlMsg =
     result.content = parent.get.content
   else:
     result.setupMsg(interrupt_reply, parent)
-  
-  
+
+
 proc inputReqMsg*(inputmsg:string): StdInMsg =
   result = StdInMsg()
   result.ident = genUUID()#ident?
@@ -360,7 +365,7 @@ proc inputReqMsg*(inputmsg:string): StdInMsg =
   result.header = initHeader(genUUID(), getISOstr(),  input_request)
   result.parent_header = none(WireHeader)
   result.metadata = %*{}
-  result.content = %* { 
+  result.content = %* {
     # the text to show at the prompt
     "prompt": inputmsg,
     # Is the request for a password?
@@ -369,8 +374,8 @@ proc inputReqMsg*(inputmsg:string): StdInMsg =
   }
 
 #[
-  
-type 
+
+type
   CommKind {.pure.} = enum
     Open, Close, Msg
   Comm = object

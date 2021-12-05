@@ -8,7 +8,7 @@ template debug*(str: varargs[string, `$`]) =
   else:
     discard
 
-const validx = ['A', 'B', 'C', 'D', 'E', 'F', 
+const validx = ['A', 'B', 'C', 'D', 'E', 'F',
                 '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 const validy = ['8', '9', '0', 'B']
 
@@ -28,27 +28,27 @@ proc flatten*(flags: openArray[string]): string =
   result = " "
   for f in flags: result.add(f&" ")
 
-proc send_multipart*(c: TConnection, msglist: openArray[string]) =
+proc send_multipart*(c: ZConnection, msglist: openArray[string]) =
   ## sends a message over the connection as multipart.
   for i, msg in msglist:
     let flag = if i != msglist.len-1: SNDMORE else: NOFLAGS
     c.send(msg,flag)
 
-proc recv_multipart*(c: TConnection): seq[string] =
+proc recv_multipart*(c: ZConnection): seq[string] =
   result = @[]
   var hasMore = true
   while hasMore:
     #debug "HASMORE: ", hasMore
-    let rc = c.s.receive()
-    if rc != "": 
+    let rc = c.socket.receive()
+    if rc != "":
       result &= rc
-    if getsockopt[int](c.s, RCVMORE) == 0:
-      # if RCVMORE == 0, this is either a single message or 
+    if getsockopt[int](c.socket, RCVMORE) == 0:
+      # if RCVMORE == 0, this is either a single message or
       # we reached the last frame
       hasMore = false
   # debug "RECV MULTIPART LEN: ", result.len
 
-proc filter*[T](seq1: openarray[T], 
+proc filter*[T](seq1: openarray[T],
                 pred: proc(item: T): bool {.closure.}): seq[T] {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ## Copied from sequtils, modified to work with openarray
@@ -58,11 +58,11 @@ proc filter*[T](seq1: openarray[T],
       result.add(seq1[i])
 
 # Useful constants
-const 
+const
   JNKernelVersion* = "0.6.2" # should match the one in the nimble file
   JNuser* = "kernel"
   JNprotocolVers* = 5.3
-var 
+var
   JNsession*: string # = genUUID() # not a const, we want it to change with every run
   JNfile* : string # = "n" & JNsession.replace('-','n') # not a const, we want it to change with every run
   JNoutCodeServerName* : string
