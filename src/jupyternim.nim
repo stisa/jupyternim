@@ -64,7 +64,7 @@ proc installKernelSpec() =
       "kernels" / "jupyternimspec"
                       elif defined(macosx) or defined(macos): expandTilde(
                           "~/Library/Jupyter/kernels") / "jupyternimspec"
-                      elif defined linux: expandTilde(
+                      elif defined unix: expandTilde(
                           "~/.local/share/jupyter/kernels") / "jupyternimspec"
   echo "[Jupyternim] Copying Jupyternim kernelspec to ", kernelspecdir
   copyDir(pkgDir / "jupyternimspec", kernelspecdir)
