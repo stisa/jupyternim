@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        nim: [ '1.2.0', 'stable', 'devel' ]
+        nim: [ '1.6.0', 'stable', 'devel' ]
     name: Build on nim ${{ matrix.nim }}
     steps:
       - uses: actions/checkout@master
