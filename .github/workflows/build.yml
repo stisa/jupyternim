@@ -4,6 +4,9 @@ on:
     paths:
       - 'src/**'
       - 'examples/**'
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:    
   schedule:
     - cron: '3 2 1 * *' 
