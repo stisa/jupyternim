@@ -22,20 +22,21 @@ jobs:
         
       - name: Cache choosenim
         id: cache-choosenim
-        uses: actions/cache@v1
+        uses: actions/cache@v3.0.11
+        
         with:
           path: ~/.choosenim
           key: ${{ runner.os }}-choosenim-stable
 
       - name: Cache nimble
         id: cache-nimble
-        uses: actions/cache@v1
+        uses: actions/cache@v3.0.11
         with:
           path: ~/.nimble
           key: ${{ runner.os }}-nimble-stable
 
       - name: Setup nim
-        uses: jiro4989/setup-nim-action@v1.3.14
+        uses: jiro4989/setup-nim-action@v1.3.62
         with:
           nim-version: ${{ matrix.nim }}
       - run: nimble build -Y
