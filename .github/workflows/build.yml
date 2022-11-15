@@ -12,11 +12,12 @@ on:
     - cron: '3 2 1 * *' 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         nim: [ '1.6.0', 'stable', 'devel' ]
-    name: Build on nim ${{ matrix.nim }}
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: Build on nim ${{ matrix.nim }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@master
         
