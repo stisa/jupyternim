@@ -1,4 +1,4 @@
-Jupyter Nim
+![logo.svg](logo.svg) Jupyter Nim 
 ====
 
 This is a beta  [jupyter](http://jupyter.org/) kernel for nim written in nim.  
